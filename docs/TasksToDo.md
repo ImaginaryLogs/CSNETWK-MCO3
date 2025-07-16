@@ -22,52 +22,62 @@ Each member has:
 ### Milestone #1
 
 - [ ] Clean Architecture & Logging
-  - [ ] Detailed report in README
-  - [ ] Verbose Mode Support
+  - [ ] Detailed report in README for Clean Architecture & Logging
+  - [ ] Verbose Mode Support for for Clean Architecture & Logging
   - [ ] Terminal Grid Display
   - [ ] Message Parsing & Debug Output
   - [ ] IP Address Logging
 - [ ] Protocol Compliance Test
-  - [ ] Detailed report in README
+  - [ ] Detailed report in README for Protocol Compliance Test
+  - [ ] Verbose Mode Support for Protocol Compliance Test
 - [ ] Message Sending and Receiving
-  - [ ] Detailed report in README
+  - [ ] Detailed report in README for Message Sending and Receiving
+  - [ ] Verbose Mode Support for Message Sending and Receiving
   - [ ] mDNS Discovery Integration
-- [ ] Protoocl Parsing and Message Format
-  - [ ] Detailed report in README
+- [ ] Protocol Parsing and Message Format
+  - [ ] Detailed report in README for Message Sending and Receiving
+  - [ ] Verbose Mode Support for Message Sending and Receiving
   - [ ] UDP Socket Setup
 
 ### Milestone #2
 
-Please complete [# Milestone 1]
+Please complete [Milestone 1](Milestone #1)
 
 - [ ] User Discovery and Presence
-  - [ ] Detailed report in README
+  - [ ] Detailed report in README for User Discovery and Presence
+  - [ ] Verbose Mode Support for User Discovery and Presence
 - [ ] Messaging Functionality
-  - [ ] Detailed report in README
+  - [ ] Detailed report in README for Messaging Functionality
+  - [ ] Verbose Mode Support for Messaging Functionality
   - [ ] Core Messaging (POST, DM, LIKE, FOLLOW)
 
 ### Milestone #3 Advanced Functionality
 
-Please complete [# Milestone 1] [# Milestone 2]
+Please complete [Milestone 1](Milestone #1) [Milestone 2](Milestone #2)
 
 - [ ] Profile Picture and Likes
-  - [ ] Detailed report in README
+  - [ ] Detailed report in README for Profile Picture and Likes
+  - [ ] Verbose Mode Support for Profile Picture and Likes
   - [ ] Core Messaging (POST, DM, LIKE, FOLLOW)
 - [ ] Token Handling and Scope Validation
-  - [ ] Detailed report in README
+  - [ ] Detailed report in README for Token Handling and Scope Validation
+  - [ ] Verbose Mode Support for Token Handling and Scope Validation
   - [ ] Correct Parsing Validation
   - [ ] Token Expiry & IP Match
 - [ ] Game Support (Tic Tac Toe)
-  - [ ] Detailed report in README
+  - [ ] Detailed report in README for Game Support (Tic Tac Toe)
+  - [ ] Verbose Mode Support for Game Support (Tic Tac Toe)
   - [ ] Result Storage
   - [ ] Result Recovery
   - [ ] Induced Packet Loss
 - [ ] File Transfer
-  - [ ] Detailed report in README
+  - [ ] Detailed report in README for File Transfer
+  - [ ] Verbose Mode Support for File Transfer
   - [ ] File Transfer (Offer, Chunk, ACK)
   - [ ] Induced Packet Loss
 - [ ] Group Management
-  - [ ] Detailed report in README
+  - [ ] Detailed report in README for Group Management
+  - [ ] Verbose Mode Support for Group Management
   - [ ] Inter-group Testing
   - [ ] Group Creation / Messaging
 
