@@ -4,7 +4,8 @@
 
 Link to the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
 
->[Important]
+> [!IMPORTANT]
+> 
 > Structure of the code:
 >
 >```txt
