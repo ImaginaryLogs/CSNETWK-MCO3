@@ -12,6 +12,7 @@ def parse_lsnp_messages(raw_message: str) -> dict:
             message[key.strip()] = value.strip()
     return message
 
+# Formats the dictionary made by the parser
 def format_lsnp_message(msg_dict: dict) -> str:
     lines = [f"{key}: {value}" for key, value in msg_dict.items()]
     return '\n'.join(lines) + '\n\n'
