@@ -5,7 +5,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 src_path = os.path.join(project_root, "src")
 sys.path.insert(0, src_path)
 
-from protocol.protocol_parser import parse_lsnp_messages, handle_lsnp_message, format_lsnp_message
+from protocol.protocol_parser import parse_lsnp_messages, format_lsnp_message
 from manager.state import known_peers, posts, dms
 
 def run_tests():
