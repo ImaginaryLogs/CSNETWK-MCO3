@@ -5,7 +5,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 src_path = os.path.join(project_root, "src")
 sys.path.insert(0, src_path)
 
-from protocol.protocol_parser import parse_lsnp_messages, handle_lsnp_message
+from protocol.protocol_parser import parse_lsnp_messages, handle_lsnp_message, format_lsnp_message
 from manager.state import known_peers, posts, dms
 
 def run_tests():
@@ -46,20 +46,8 @@ TOKEN: alice@192.168.1.2|1728942100|chat
     for i, raw in enumerate(samples, 1):
         print(f"\n--- Test #{i} ---")
         msg = parse_lsnp_messages(raw)
-        handle_lsnp_message(msg, verbose=verbose)
-
-    # print results here
-    print("\n=== Known Peers ===")
-    for user_id, data in known_peers.items():
-        print(f"{user_id}: {data}")
-
-    print("\n=== Posts ===")
-    for user_id, user_posts in posts.items():
-        print(f"{user_id}: {user_posts}")
-
-    print("\n=== DMs ===")
-    for sender, messages in dms.items():
-        print(f"{sender}: {messages}")
-
+        formatted_msg = format_lsnp_message(msg)
+        print(formatted_msg)
+        
 if __name__ == "__main__":
     run_tests()
