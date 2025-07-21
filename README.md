@@ -5,7 +5,7 @@
 Link to the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
 
 > [!IMPORTANT]
-> 
+>
 > Structure of the code:
 >
 >```txt
@@ -16,6 +16,8 @@ Link to the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
 > │
 > └── TaskToDo.md
 >src/
+> ├── __init__.py
+> │
 > ├── config/                 <--: Configs
 > │   └── ...
 > ├── game/                   <--: Game state, player assets
@@ -34,12 +36,34 @@ Link to the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
 > └── utils/                  <--: Helper files
 >     └── ...
 > tests/
+> ├── __init__.py
+> │
 > ├── manager
 > │   └── ...
 > ├── network
 > │   └── ...
 > └── protocol
 >     └── ...
+> pyproject.toml
+> __init__.py
 > README.md
 >```
 >
+
+## Installation
+
+`pip install -r requirements.txt`
+
+`pip install -e .`
+
+`poetry install`
+
+`poetry add <your-library-to-add>`
+
+Running the server `poetry run python src/manager/main.py`
+
+## Testing
+
+`poetry install pytest`
+
+`poetry run pytest`

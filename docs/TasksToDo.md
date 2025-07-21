@@ -83,7 +83,7 @@ Please complete [Milestone 1](Milestone #1) [Milestone 2](Milestone #2)
 
 ### Documentation
 
-- [ ] Add an AI Disclaimer
+- [ ] Add an AI Disclaimer, Primary: @ImaginaryLogs
 - [ ] Milestone Tracking and Deliverables, Primary: @ImaginaryLogs
   - [ ] Detailed report in README
 - [ ] RFC & Project Report
