@@ -56,11 +56,15 @@ Link to the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
 
 `pip install -e .`
 
+`pip install poetry`
+
 `poetry install`
+
+Reselect your python interpreter to the local instance.
 
 `poetry add <your-library-to-add>`
 
-Running the server `poetry run python src/manager/main.py`
+Run the server `poetry run python src/manager/main.py`.
 
 ## Testing
 
