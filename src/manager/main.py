@@ -1,6 +1,7 @@
 import argparse
 from src.ui.logging import LogEntry, Logger, LoggerInstance, LogLevel
-from src.protocol.lsnp_peer_mdns import *
+from src.network.peer_listener import *
+from src.manager import *
 
 logger = Logger()
 
@@ -17,7 +18,7 @@ def main():
   parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose mode")
   args = parser.parse_args()
 
-  peer = LSNPPeer(args.user_id, args.name, args.port, args.verbose)
+  peer = LSNPController(args.user_id, args.name, args.port, args.verbose)
   peer.run()
   pass
 

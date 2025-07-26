@@ -1,4 +1,5 @@
-from .message_format import make_profile_message, make_dm_message, make_ack_message, make_ping_message
-from .lsnp_peer_mdns import LSNPPeer
+from .types.messages.message_formats import make_profile_message, make_dm_message, make_ack_message, make_ping_message
+from .types.messages.peer_format import Peer
 
-__all__ = ["make_profile_message", "make_dm_message", "make_ack_message", "make_ping_message", "LSNPPeer"]
+
+__all__ = ["make_profile_message", "make_dm_message", "make_ack_message", "make_ping_message", "Peer"]

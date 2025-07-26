@@ -4,10 +4,20 @@
 
 > Need a Local Social Peer Network? We got you connected and covered!
 
-This machine project is in fulfillment for the Introduction to Computer Networks Class of De La Salle Univerity of AY2024-2025 Term 3. 
+This machine project is in fulfillment for the Introduction to Computer Networks Class of De La Salle Univerity of AY2024-2025 Term 3.
 
 ## Project Overview
 
+The structure of our code is separated to three major components: documentations `docs/`, source code `src/`, tests / quality assurance `tests/`.
+
+The source code is partially based on the Model-View-Control MVC Format. The project architecture is specialized to fit its own needs, and that is:
+
+- `config` - model-type, store configurations for the application.
+- `game` - has controller-type files handling game logic like tic-tac-toe.
+- `managers/` - has controller-type files handling the necessary \'business\' logic to handle any applications.
+- `networks/` - has controller-type files handling networking logic.
+- `protocol/` - has model-type files handling token parsing, protocol parsing, and any files dealing with non-logging data handling and storage.
+- `ui/` - has view-type files handling logging, cli output and formatting. Logging data is handled here.
 
 > [!NOTE]
 > Structure of the code:
@@ -24,17 +34,21 @@ This machine project is in fulfillment for the Introduction to Computer Networks
 > │
 > ├── config/                 <--: Configs
 > │   └── ...
+> │
 > ├── game/                   <--: Game state, player assets
 > │   └── ...
+> │
 > ├── manager/                <--: Core/Controller/Managers
 > │   └── ...
+> │
 > ├── protocol/               <--: Protocol and Type Definitions
 > │   ├── ... 
 > │   │
 > │   └── types/   
-> │       ├── games
+> │       ├── games           <--: Key-Value Dict Type definitions for Tic, Tac, Toe
 > │       │
-> │       └── messages
+> │       └── messages        <--: Key-Value Dict Type definitions for Profiles, DMs, Ack and Ping
+> │
 > ├── ui                      <--: UI/Terminal/View
 > │   └── ...
 > └── utils/                  <--: Helper files
@@ -48,9 +62,14 @@ This machine project is in fulfillment for the Introduction to Computer Networks
 > │   └── ...
 > └── protocol
 >     └── ...
-> pyproject.toml
 > __init__.py
+> makefile
+> pyproject.toml
+> poetry.lock
+> pyproject.toml
 > README.md
+> requirements.txt
+> ...
 >```
 >
 
