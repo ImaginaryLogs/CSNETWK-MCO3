@@ -375,15 +375,3 @@ class LSNPPeer:
 		if cmd != "quit": print("") # For better looks
 		mds_logger.critical("Peer terminated.")
 
-# Tiny test values
-if __name__ == "__main__":
-	import argparse
-	parser = argparse.ArgumentParser()
-	parser.add_argument("user_id", help="Your username (without @ip)")
-	parser.add_argument("-n", "--name", default="Anonymous", help="Display name")
-	parser.add_argument("-p", "--port", type=int, default=LSNP_PORT, help="UDP port")
-	parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose mode")
-	args = parser.parse_args()
-
-	peer = LSNPPeer(args.user_id, args.name, args.port, args.verbose)
-	peer.run()

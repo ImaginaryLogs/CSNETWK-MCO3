@@ -1,4 +1,4 @@
-from manager.state import known_peers, posts, dms
+from src.manager.state import known_peers, posts, dms
 
 def parse_lsnp_messages(raw_message: str) -> dict:
     '''    
