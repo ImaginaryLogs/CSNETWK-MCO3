@@ -12,11 +12,13 @@ class LogLevel(Enum):
   """
   Enum for different log levels.
   """
-  DEBUG = "[blue][DEBUG][/]"
-  INFO = "[green][INFO][/]"
-  WARNING = "[yellow][WARNING][/]"
-  ERROR = "[orange][ERROR][/]"
-  CRITICAL = "[red]]CRITICAL][/]"
+  INPUT =      "[blue][<<<<][/]"
+  DEBUG =      "[blue][DEBG][/]"
+  INFO =      "[green][INFO][/]"
+  WARNING =  "[yellow][WARN][/]"
+  ERROR =    "[orange][EROR][/]"
+  CRITICAL =    "[red][CRIT][/]"
+  
   
 
 
@@ -38,7 +40,7 @@ class LogEntry:
         str: formatted string
     """
     strTime = self.timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3];
-    return f"[black][{strTime}][/] {self.level.value} {self.prefix} {self.message}";
+    return f"[black][{strTime}][/] {self.prefix} {self.level.value} {self.message}";
   
 class Logger:
   """
@@ -161,7 +163,7 @@ class LoggerInstance:
     """Set reference to parent singleton logger."""
     self._parent_logger = parent_logger
     
-  def _log(self, level: LogLevel, message: str) -> None:
+  def _log(self, level: LogLevel, message: str, end: str = "\n") -> None:
     """Internal method to handle logging."""
     if self._parent_logger is None:
         raise RuntimeError("Logger instance not properly initialized")
@@ -176,27 +178,32 @@ class LoggerInstance:
     self._parent_logger._store_log(entry)
     
     if self.console_enabled: 
-      console.print(str(entry))
+      console.print(str(entry), end=end)
   
-  def debug(self, message: str) -> None:
+  def input(self, message: str, end: str = "\n") -> str:
+      """Logs an Input"""
+      self._log(LogLevel.INPUT, message, end=end)
+      return input(message)
+  
+  def debug(self, message: str, end: str = "\n") -> None:
       """Log debug message."""
-      self._log(LogLevel.DEBUG, message)
+      self._log(LogLevel.DEBUG, message, end)
   
-  def info(self, message: str) -> None:
+  def info(self, message: str, end: str = "\n") -> None:
       """Log info message."""
-      self._log(LogLevel.INFO, message)
+      self._log(LogLevel.INFO, message, end)
   
-  def warning(self, message: str) -> None:
+  def warning(self, message: str, end: str = "\n") -> None:
       """Log warning message."""
-      self._log(LogLevel.WARNING, message)
+      self._log(LogLevel.WARNING, message, end)
   
-  def error(self, message: str) -> None:
+  def error(self, message: str, end: str = "\n") -> None:
       """Log error message."""
-      self._log(LogLevel.ERROR, message)
+      self._log(LogLevel.ERROR, message, end)
   
-  def critical(self, message: str) -> None:
+  def critical(self, message: str, end: str = "\n") -> None:
       """Log critical message."""
-      self._log(LogLevel.CRITICAL, message)
+      self._log(LogLevel.CRITICAL, message, end)
   
   def set_console_enabled(self, enabled: bool) -> None:
       """Enable or disable console output for this instance."""

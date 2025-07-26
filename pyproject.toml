@@ -13,6 +13,9 @@ pytest = "^8.4.1"
 rich = "^14.0.0"
 zeroconf = "^0.147.0"
 
+[tool.poetry.group.dev.dependencies]
+watchdog = "^6.0.0"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
