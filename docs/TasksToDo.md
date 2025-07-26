@@ -34,7 +34,7 @@ Each member has:
   - [ ] Detailed report in README for Message Sending and Receiving
   - [ ] Verbose Mode Support for Message Sending and Receiving
   - [ ] mDNS Discovery Integration
-- [ ] Protocol Parsing and Message Format
+- [x] Protocol Parsing and Message Format
   - [ ] Detailed report in README for Message Sending and Receiving
   - [ ] Verbose Mode Support for Message Sending and Receiving
   - [ ] UDP Socket Setup
