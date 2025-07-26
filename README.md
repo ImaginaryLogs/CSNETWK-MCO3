@@ -1,11 +1,15 @@
 # CSNETWK-MCO3
 
-![Static Badge](https://img.shields.io/badge/AY2425--T3-CSNETWK-red)
+![Static Badge](https://img.shields.io/badge/AY2425--T3-CSNETWK-red) ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff)
 
-Link to the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
+> Need a Local Social Peer Network? We got you connected and covered!
 
-> [!IMPORTANT]
->
+This machine project is in fulfillment for the Introduction to Computer Networks Class of De La Salle Univerity of AY2024-2025 Term 3. 
+
+## Project Overview
+
+
+> [!NOTE]
 > Structure of the code:
 >
 >```txt
@@ -50,27 +54,77 @@ Link to the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
 >```
 >
 
+When performing Milestone Tracking and Deliverables, it is being done in the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
+
+| Task Role                               | @ImaginaryLogs (Roan Cedric V. Campo) | @InsomniacCoffee (Kenneth D. Go) | @ClarenceAng (Clarence Ang) | @nathan1elA (Nathaniel) |
+|-----------------------------------------|---------------------------------------|----------------------------------|-----------------------------|-------------------------|
+| **Network Communication**               |                                       |                                  |                             |                         |
+| UDP Socket Setup                        |                                       |                                  |                             |                         |
+| mDNS Discovery Integration              |                                       |                                  |                             |                         |
+| IP Address Logging                      |                                       |                                  |                             |                         |
+| **Core Feature Implementation**         |                                       |                                  |                             |                         |
+| Core Messaging (POST, DM, LIKE, FOLLOW) |                                       |                                  |                             |                         |
+| File Transfer (Offer, Chunk, ACK)       |                                       |                                  |                             |                         |
+| Tic Tac Toe Game (with recovery)        |                                       |                                  |                             |                         |
+| Group Creation / Messaging              |                                       |                                  |                             |                         |
+| Induced Packet Loss (Game & File)       |                                       |                                  |                             |                         |
+| Acknowledgement / Retry                 |                                       |                                  |                             |                         |
+| **UI & Logging**                        |                                       |                                  |                             |                         |
+| Verbose Mode Support                    |                                       |                                  |                             |                         |
+| Terminal Grid Display                   |                                       |                                  |                             |                         |
+| Message Parsing & Debug Output          |                                       |                                  |                             |                         |
+| **Testing and Validation**              |                                       |                                  |                             |                         |
+| Inter-group Testing                     |                                       |                                  |                             |                         |
+| Correct Parsing Validation              |                                       |                                  |                             |                         |
+| Token Expiry & IP Match                 |                                       |                                  |                             |                         |
+| **Documentation & Coordination**        |                                       |                                  |                             |                         |
+| RFC & Project Report                    |                                       |                                  |                             |                         |
+| Milestone Tracking & Deliverables       |                                       |                                  |                             |                         |
+
+## Disclaimer
+
+> ![WARNING]
+>
+> ![ChatGPT](https://img.shields.io/badge/ChatGPT-74aa9c?logo=openai&logoColor=white) ![Claude](https://img.shields.io/badge/Claude-D97757?logo=claude&logoColor=fff)
+> Parts of the code documentation in this project were generated or assisted by AI tools, including OpenAI's [ChatGPT](https://chatgpt.com/) and Anthropic's [Claude](https://www.anthropic.com/claude). While care has been taken to review and verify the content, automated outputs may contain errors or omissions. Please review critically and contribute improvements where necessary when reading documentation.
+
 ## Installation
 
-`pip install -r requirements.txt`
+Some dependencies are required to install for this project to work. As such to handle many dependencies, the [poetry](https://python-poetry.org/) python dependencies manager is used to manage such dependencies.
 
-`pip install -e .`
+```zsh
+pip install -r requirements.txt
 
-`pip install poetry`
+pip install -e .
 
-`poetry install`
+poetry install
+```
 
-Reselect your python interpreter to the local instance.
+Then, reselect your python interpreter to the local instance.
 
-`poetry add <your-library-to-add>`
+```zsh
+# Adds a library 
+poetry add 'your-library-to-add'
+
+# Removes a library
+poetry remove 'your-library-to-remove'
+```
 
 Run the server `poetry run python src/manager/main.py`.
 
 ## Testing
 
-`poetry install pytest`
+Performing quality assurance is done via pytest for automatic test generation and qualification.
 
-`poetry run pytest`
+Simply install and run the pytest program to execute test files located in `/tests/`.
+
+```zsh
+# Install pytest to your local python env
+poetry install pytest
+
+# Run pytest
+poetry run pytest
+```
 
 ## Documentation
 
@@ -113,10 +167,11 @@ The main logging class that manages all log storage and instance creation.
 
 ##### Key Features
 
-- Thread-safe singleton pattern using double-checked locking
-- Centralized log storage with thread-safe operations
-- Instance management for different logger configurations
-- Log filtering and retrieval capabilities
+- Thread-safe singleton pattern using double-checked locking.
+- Centralized log storage with thread-safe operations.
+- Instance management for different logger configurations.
+- Log filtering and retrieval capabilities.
+- Stores Logs in a file once the length or time threshold has been reached.
 
 ##### Methods for Logger
 
