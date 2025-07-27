@@ -13,8 +13,6 @@ This machine project is in fulfillment for the Introduction to Computer Networks
 |[<img src="https://github.com/InsomniacCoffee.png" width="60px;"/><br /><sub><a href="https://github.com/InsomniacCoffee}"></a></sub>](https://github.com/InsomniacCoffee/)| Go, Kenneth D. <br /> (@InsomniacCoffee)       | Coffee |
 |[<img src="https://github.com/nathan1elA.png" width="60px;"/><br /><sub><a href="https://github.com/nathan1elA}"></a></sub>](https://github.com/nathan1elA/)               | Nathaniel <br /> (@nathan1elA)                 | Napalm |
 
-
-
 ## Project Overview
 
 The structure of our code is separated to three major components: documentations `docs/`, source code `src/`, tests / quality assurance `tests/`.
@@ -156,24 +154,39 @@ poetry run pytest
 ```
 
 ## Documentation
+
 ### Table of Contents
 
-#### [Milestone 1](#milestone-1)
-- [Logging](#logging)  
-  - [LogLevel (Enum)](#loglevel-enum)  
-  - [LogEntry (Dataclass)](#logentry-dataclass)  
-  - [Logger (Singleton)](#logger-singleton)  
-  - [LoggerInstance](#loggerinstance)  
-- [IPAddressTracker](#ipaddresstracker)  
-  - [Core Tracking Methods](#core-tracking-methods)  
-  - [Analysis and Statistics Methods](#analysis-and-statistics-methods)  
-#### Milestone 2
-#### Milestone 3
-
----
+- [CSNETWK-MCO3](#csnetwk-mco3)
+  - [Project Overview](#project-overview)
+  - [Disclaimer](#disclaimer)
+  - [Installation](#installation)
+  - [Testing](#testing)
+  - [Documentation](#documentation)
+    - [Table of Contents](#table-of-contents)
+    - [Milestone 1](#milestone-1)
+      - [Logging](#logging)
+        - [Classes](#classes)
+          - [LogLevel (Enum)](#loglevel-enum)
+        - [LogEntry (Dataclass)](#logentry-dataclass)
+        - [Logger (Singleton)](#logger-singleton)
+          - [Key Features](#key-features)
+          - [Methods for Logger](#methods-for-logger)
+        - [LoggerInstance](#loggerinstance)
+          - [Methods for Logger Instance](#methods-for-logger-instance)
+          - [Logging Methods](#logging-methods)
+          - [Configuration Methods](#configuration-methods)
+      - [IP Address Tracker](#ip-address-tracker)
+        - [Key Features for IP Address Tracker](#key-features-for-ip-address-tracker)
+        - [Data Structures](#data-structures)
+        - [Methods](#methods)
+          - [Core Tracking Methods](#core-tracking-methods)
+          - [Analysis and Statistics Methods](#analysis-and-statistics-methods)
 
 ### Milestone 1
+
 #### Logging
+
 The Logger system consists of three main components:
 
 - `Logger` - Singleton class that manages log storage and instance creation
@@ -259,7 +272,7 @@ Individual logger instances with specific configurations.
 
 ###### Methods for Logger Instance
 
-**Logging Methods**
+###### Logging Methods
 
 1) > `input(message: str, end: str = "\n") -> str`
    > Logs input and prompts for user input
@@ -274,17 +287,16 @@ Individual logger instances with specific configurations.
 6) > `critical(message: str, end: str = "\n") -> None`
    > Logs critical messages
 
-**Configuration Methods**
+###### Configuration Methods
 
 1) `set_console_enabled(enabled: bool) -> None` - Enable/disable console output
 2) `set_prefix(prefix: str) -> None` - Change the instance prefix
 
-#### IPAddressTracker
+#### IP Address Tracker
 
-The IPAddressTracker is a specialized component designed to monitor, track, and analyze IP address-related network activities within the logging system. It provides comprehensive IP address management, connection monitoring, and suspicious activity detection.
+The IP Address Tracker is a specialized component designed to monitor, track, and analyze IP address-related network activities within the logging system. It provides comprehensive IP address management, connection monitoring, and suspicious activity detection.
 
-
-##### Key Features
+##### Key Features for IP Address Tracker
 
 - **IP Discovery Tracking** - Monitors and logs when new IP addresses are first encountered
 - **User-to-IP Mapping** - Maintains associations between IP addresses and user identifiers
@@ -305,16 +317,16 @@ The IPAddressTracker is a specialized component designed to monitor, track, and 
 ###### Core Tracking Methods
 
 1) > `__init__(main_logger_instance) -> None`
-   > 
+   >
    > Initializes the IPAddressTracker with a reference to the main logger instance.
-   > 
+   >
    > **Parameters:**
    > - `main_logger_instance` - Reference to the main Logger singleton instance for logging activities
 
 2) > `log_new_ip(ip: str, user_id: str = None, context: str = "discovery") -> None`
-   > 
+   >
    > Logs when a new IP address is encountered for the first time.
-   > 
+   >
    > **Parameters:**
    > - `ip` - The IP address that was discovered
    > - `user_id` - Optional user identifier associated with this IP
@@ -322,14 +334,14 @@ The IPAddressTracker is a specialized component designed to monitor, track, and 
    > **Behavior:** Adds IP to known_ips set and creates user mapping if provided. Logs discovery event with context.
 
 3) > `log_connection_attempt(ip: str, port: int, success: bool = True) -> None`
-   > 
+   >
    > Records connection attempts from specific IP addresses and monitors for suspicious patterns.
-   > 
+   >
    > **Parameters:**
    > - `ip` - Source IP address of the connection attempt
    > - `port` - Target port number
    > - `success` - Whether the connection attempt was successful
-   > 
+   >
    > **Behavior:** Increments connection counter, logs attempt status, and triggers suspicious activity warnings for excessive failed attempts (>10).
 
 4) > `log_message_flow(from_ip: str, to_ip: str, msg_type: str, size: int) -> None`
@@ -341,20 +353,19 @@ The IPAddressTracker is a specialized component designed to monitor, track, and 
    > - `to_ip` - Destination IP address receiving the message
    > - `msg_type` - Type of message being sent (e.g., "DM", "PROFILE", "ACK")
    > - `size` - Size of the message in bytes
-   > 
+   >
    > **Behavior:** Logs detailed message flow information for traffic analysis and debugging.
-   > 
+   >
 
 ###### Analysis and Statistics Methods
 
 5) > `get_ip_stats() -> Dict[str, Any]`
-   > 
+   >
    > Generates comprehensive statistics about IP address activity and network patterns.
-   > 
+   >
    > **Returns:** Dictionary containing:
    > - `total_known_ips: int` - Total number of unique IP addresses encountered
    > - `mapped_users: int` - Number of IP addresses with associated user identifiers
    > - `total_connection_attempts: int` - Sum of all connection attempts across all IPs
    > - `blocked_ips: int` - Number of IP addresses flagged as suspicious or blocked
    > - `top_active_ips: List[Tuple[str, int]]` - Top 5 most active IP addresses with attempt counts
-
