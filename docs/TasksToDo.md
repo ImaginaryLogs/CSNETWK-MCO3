@@ -23,10 +23,10 @@ Each member has:
 
 - [ ] Clean Architecture & Logging
   - [ ] Detailed report in README for Clean Architecture & Logging
-  - [ ] Verbose Mode Support for for Clean Architecture & Logging
+  - [x] Verbose Mode Support for for Clean Architecture & Logging
   - [ ] Terminal Grid Display
   - [ ] Message Parsing & Debug Output
-  - [ ] IP Address Logging
+  - [x] IP Address Logging
 - [ ] Protocol Compliance Test
   - [ ] Detailed report in README for Protocol Compliance Test
   - [ ] Verbose Mode Support for Protocol Compliance Test
@@ -34,10 +34,10 @@ Each member has:
   - [ ] Detailed report in README for Message Sending and Receiving
   - [ ] Verbose Mode Support for Message Sending and Receiving
   - [ ] mDNS Discovery Integration
-- [ ] Protocol Parsing and Message Format
+- [x] Protocol Parsing and Message Format
   - [ ] Detailed report in README for Message Sending and Receiving
   - [ ] Verbose Mode Support for Message Sending and Receiving
-  - [ ] UDP Socket Setup
+  - [x] UDP Socket Setup
 
 ### Milestone #2
 
@@ -83,8 +83,8 @@ Please complete [Milestone 1](Milestone #1) [Milestone 2](Milestone #2)
 
 ### Documentation
 
-- [ ] Add an AI Disclaimer, Primary: @ImaginaryLogs
-- [ ] Milestone Tracking and Deliverables, Primary: @ImaginaryLogs
+- [x] Add an AI Disclaimer, Primary: @ImaginaryLogs
+- [x] Milestone Tracking and Deliverables, Primary: @ImaginaryLogs
   - [ ] Detailed report in README
 - [ ] RFC & Project Report
   - [ ] Detailed report in README
