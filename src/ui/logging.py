@@ -10,8 +10,9 @@ import json
 import os
 
 LOG_TIMECHECK_MINUTES = 5
-LOG_DEBUG = True
-LOGGER_PREFIX = "[LOGGER]"
+LOG_DEBUG = False
+LOGGER_CODENAME = 'LOGGER '
+LOGGER_PREFIX = f"[blue][{LOGGER_CODENAME}][/]"
 LOG_FILENAME = "logger.log"
 
 console = Console()
@@ -20,12 +21,12 @@ class LogLevel(Enum):
   """
   Enum for different log levels.
   """
-  INPUT =      "[blue][<<<<][/]"
-  DEBUG =      "[blue][DEBG][/]"
-  INFO =      "[green][INFO][/]"
-  WARNING =  "[yellow][WARN][/]"
-  ERROR =    "[orange][EROR][/]"
-  CRITICAL =    "[red][CRIT][/]"
+  INPUT =      "[blue][<<<<<][/]"
+  DEBUG =      "[blue][     ][/]"
+  INFO =      "[green][  -  ][/]"
+  WARNING =  "[yellow][ /!\\ ][/]"
+  ERROR =    "[red][ !!! ][/]"
+  CRITICAL =    "[magenta][!!!!!][/]"
   
 @dataclass
 class LogEntry:

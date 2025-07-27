@@ -5,19 +5,20 @@ from src.manager import *
 
 logger = Logger()
 
-server_logger = logger.get_logger('[Server]')
-verbose_logger = logger.get_logger('[Server] >>', False)
+STARTER_CODENAME='STARTER'
+
+server_logger = logger.get_logger(f'[{STARTER_CODENAME}]')
+verbose_logger = logger.get_logger(f'[{STARTER_CODENAME}] |:', False)
 
 def main():
   server_logger.info("Hello World!")
-  verbose_logger.info("The Message above me is printed with Logger.")
   parser = argparse.ArgumentParser()
   parser.add_argument("user_id", help="Your username (without @ip)")
   parser.add_argument("-n", "--name", default="Anonymous", help="Display name")
   parser.add_argument("-p", "--port", type=int, default=LSNP_PORT, help="UDP port")
   parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose mode")
   args = parser.parse_args()
-
+  server_logger.info("Starting LSNP Controller...")
   peer = LSNPController(args.user_id, args.name, args.port, args.verbose)
   peer.run()
   pass

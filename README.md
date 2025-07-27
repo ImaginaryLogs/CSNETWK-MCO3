@@ -15,7 +15,7 @@ The source code is partially based on the Model-View-Control MVC Format. The pro
 - `config` - model-type, store configurations for the application.
 - `game` - has controller-type files handling game logic like tic-tac-toe.
 - `managers/` - has controller-type files handling the necessary \'business\' logic to handle any applications.
-- `networks/` - has controller-type files handling networking logic.
+- `networks/` - has controller-type and model-type files handling networking logic.
 - `protocol/` - has model-type files handling token parsing, protocol parsing, and any files dealing with non-logging data handling and storage.
 - `ui/` - has view-type files handling logging, cli output and formatting. Logging data is handled here.
 
@@ -162,12 +162,12 @@ The Logger system consists of three main components:
 
 Defines different log levels with rich console formatting colors:
 
-- `INPUT` - Blue `[<<<<]` for user input logging.
-- `DEBUG` - Blue `[DEBG]` for debug information.
-- `INFO` - Green `[INFO]` for general information.
-- `WARNING` - Yellow `[WARN]` for warnings that can include special cases or handled unexpected behavior
-- `ERROR` - Orange `[EROR]` for errors. These are for features that have failed in someway.
-- `CRITICAL` - Red `[CRIT]` for critical issue that affect the entire system,
+- `INPUT` - Blue `[<<<<<]` for user input logging.
+- `DEBUG` - Blue `[     ]` for debug information.
+- `INFO` - Green `[  -  ]` for general information.
+- `WARNING` - Yellow `[ /!\\ ]` for warnings that can include special cases or handled unexpected behavior
+- `ERROR` - Orange `[ !!! ]` for errors. These are for features that have failed in someway.
+- `CRITICAL` - Red `[!!!!!]` for critical issue that affect the entire system,
 
 #### LogEntry (Dataclass)
 

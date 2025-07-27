@@ -1,7 +1,7 @@
 .PHONY: watch run
 
 # The main script you want to rerun
-SCRIPT=src/protocol/lsnp_peer_mdns.py
+SCRIPT=src/manager/main.py
 
 # Watch for changes and rerun the script
 watch:
