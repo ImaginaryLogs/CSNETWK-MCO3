@@ -158,6 +158,7 @@ poetry run pytest
 ## Documentation
 ### Table of Contents
 
+#### [Milestone 1](#milestone-1)
 - [Logging](#logging)  
   - [LogLevel (Enum)](#loglevel-enum)  
   - [LogEntry (Dataclass)](#logentry-dataclass)  
@@ -166,7 +167,10 @@ poetry run pytest
 - [IPAddressTracker](#ipaddresstracker)  
   - [Core Tracking Methods](#core-tracking-methods)  
   - [Analysis and Statistics Methods](#analysis-and-statistics-methods)  
+#### Milestone 2
+#### Milestone 3
 
+---
 
 ### Milestone 1
 #### Logging
