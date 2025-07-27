@@ -34,6 +34,7 @@ class LSNPController:
 		self.ack_events: Dict[str, threading.Event] = {}
 
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1) # Enables broadcasting
 		self.socket.bind(("", self.port))
 
 		self.zeroconf = Zeroconf()
@@ -300,7 +301,6 @@ class LSNPController:
 		msg = make_ping_message(self.full_user_id)
 		# Broadcast ping
 		broadcast_addr = self.ip.rsplit('.', 1)[0] + '.255'
-		self.socket.sendto(msg.encode(), (broadcast_addr, self.port))
   
 		try:
 			self.socket.sendto(msg.encode(), (broadcast_addr, self.port))
@@ -315,12 +315,12 @@ class LSNPController:
 			lsnp_logger.info("No peers discovered yet.")
 			return
  
-		lsnp_logger.info(f"Peer List: {self.peer_map} peers active.")
+		lsnp_logger.info(f"Peer List: {len(self.peer_map)} peers active.")
 		lsnp_logger.info("Available peers:")
 		for peer in self.peer_map.values():
 			# Show both short and full format
 			short_id = peer.user_id.split('@')[0]
-			lsnp_logger.info(f"- {peer.display_name} ({short_id}) [{peer.user_id}] at {peer.ip}: {peer.port}")
+			lsnp_logger.info(f"- {peer.display_name} ({short_id}) at {peer.ip}: {peer.port}")
 
 	def show_inbox(self):
 		if not self.inbox:
@@ -376,6 +376,8 @@ class LSNPController:
 				elif cmd == "verbose":
 					self.verbose = not self.verbose
 					lsnp_logger.info(f"Verbose mode {'on' if self.verbose else 'off'}")
+				elif cmd == "ipstats":
+					self.show_ip_stats()
 				elif cmd == "quit":
 					break
 				else:

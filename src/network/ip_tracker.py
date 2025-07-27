@@ -14,6 +14,7 @@ from src.network import *
 
 logger = Logger()
 
+IP_ADDRESS_TOP_K_LIMIT = 5
 IP_LOGGER_CODE_NAME = 'IPTRAKR'
 
 ip_logger = logger.get_logger(f'[cyan][{IP_LOGGER_CODE_NAME}][/]')
@@ -62,9 +63,9 @@ class IPAddressTracker:
           'mapped_users': len(self.ip_to_user),
           'total_connection_attempts': sum(self.connection_attempts.values()),
           'blocked_ips': len(self.blocked_ips),
-          'top_five_active_ips': sorted(
+          'top_active_ips': sorted(
               self.connection_attempts.items(), 
               key=lambda x: x[1], 
               reverse=True
-          )[:5]
+          )[:IP_ADDRESS_TOP_K_LIMIT]
       }
