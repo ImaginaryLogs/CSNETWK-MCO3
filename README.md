@@ -77,7 +77,7 @@ Milestone #1:
 
 - Clean Architecture & Logging:
 - Protocol Compliance Test Suite:
-- Message Sending and Receiving:
+- Message Sending and Receiving: Nathaniel Adiong
 - Protocol Parsing and Message Format: Clarence Ang
 
 Milestone #2:
