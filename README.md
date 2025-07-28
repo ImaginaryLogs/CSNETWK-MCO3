@@ -8,14 +8,14 @@ Link to the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
 >
 > Structure of the code:
 >
->```txt
->docs/
+> ```txt
+> docs/
 > ├── CSNETWK MP Rubric.pdf
 > │
 > ├── CSNETWK MP RFC.pdf
 > │
 > └── TaskToDo.md
->src/
+> src/
 > ├── __init__.py
 > │
 > ├── config/                 <--: Configs
@@ -25,9 +25,9 @@ Link to the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
 > ├── manager/                <--: Core/Controller/Managers
 > │   └── ...
 > ├── protocol/               <--: Protocol and Type Definitions
-> │   ├── ... 
+> │   ├── ...
 > │   │
-> │   └── types/   
+> │   └── types/
 > │       ├── games
 > │       │
 > │       └── messages
@@ -47,8 +47,7 @@ Link to the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
 > pyproject.toml
 > __init__.py
 > README.md
->```
->
+> ```
 
 ## Installation
 
@@ -71,3 +70,25 @@ Run the server `poetry run python src/manager/main.py`.
 `poetry install pytest`
 
 `poetry run pytest`
+
+## Contributions
+
+Milestone #1:
+
+- Clean Architecture & Logging:
+- Protocol Compliance Test Suite:
+- Message Sending and Receiving:
+- Protocol Parsing and Message Format: Clarence Ang
+
+Milestone #2:
+
+- User Discovery and Presence:
+- Message Functionality:
+
+Milestone #3:
+
+- Profile Picture and Likes:
+- File Transfer:
+- Token Handling and Scope Validation:
+- Group Management:
+- Game Support (Tic-Tac-Toe):
