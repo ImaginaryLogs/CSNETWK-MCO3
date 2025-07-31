@@ -19,7 +19,7 @@ LSNP_PREFIX = f'[green][{LSNP_CODENAME}][/]'
 lsnp_logger = logger.get_logger(LSNP_PREFIX)
 lsnp_logger_v = logger.get_logger(f'{LSNP_PREFIX} |:')
 
-LSNP_BROADCAST_PERIOD_SECONDS = 300
+LSNP_BROADCAST_PERIOD_SECONDS = 300 # 5 minutes
 
 class LSNPController:
 	def __init__(self, user_id: str, display_name: str, port: int = LSNP_PORT, verbose: bool = True):
@@ -75,7 +75,7 @@ class LSNPController:
 		threading.Thread(target=self._listen, daemon=True).start()
 		listener = PeerListener(self.peer_map, self._on_peer_discovered)
 		ServiceBrowser(self.zeroconf, MDNS_SERVICE_TYPE, listener)
-		threading.Thread(target=self._periodic_profile_broadcast, daemon=True).start()
+		threading.Thread(target=self._periodic_tasks, daemon=True).start()
 		if self.verbose:
 			lsnp_logger_v.info("[mDNS] Discovery started")
 
@@ -289,13 +289,14 @@ class LSNPController:
 			lsnp_logger_v.info("[BROADCAST] Profile message sent.")
 
 
-	def _periodic_profile_broadcast(self):
+	def _periodic_tasks(self):
 		while True:
 			time.sleep(LSNP_BROADCAST_PERIOD_SECONDS)  # 5 minutes
 			if self.peer_map:  # Only broadcast if we have peers
 				if self.verbose:
 					lsnp_logger_v.info("Periodic Broadcast - Starting scheduled profile broadcast.")
 				self.broadcast_profile()
+				self.send_ping()
 
 	def send_ping(self):
 		msg = make_ping_message(self.full_user_id)
