@@ -192,7 +192,7 @@ poetry run pytest
         - [mDNS Service Registration](#mdns-service-registration)
           - [Service Registration Process](#service-registration-process)
           - [Integration with LSNPController](#integration-with-lsnpcontroller)
-
+          
 ### Milestone 1
 
 #### Logging
@@ -649,3 +649,4 @@ The controller provides an interactive command-line interface:
 - **Retry Mechanism** - Automatic retransmission for failed message delivery
 - **Connection Monitoring** - Tracks failed connection attempts and suspicious activity
 - **Graceful Degradation** - Continues operation despite individual peer failures
+
