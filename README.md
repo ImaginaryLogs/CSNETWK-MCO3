@@ -388,16 +388,18 @@ Where each key-value pair is separated by a newline, and messages are separated 
 
 #### Core Parsing Methods
 
-1. parse_lsnp_messages(raw_message: str) -> dict
+1. parse_lsnp_messages(raw_message: str, verbose: bool) -> dict
    Args:
    raw_message (str): The raw LSNP message string to parse.
+   verbose (bool): If True, print debug information
 
    Returns:
    dict: A dictionary of key-value pairs extracted from the message.
 
-2. format_lsnp_message(msg_data: dict) -> str
+2. format_lsnp_message(msg_data: dict, verbose: bool) -> str
    Args
    msg_dict (dict): Dictionary of key-value pairs.
+   verbose (bool): If True, print debug information
 
    Returns
    str: LSNP-formatted message string ending with \n\n.
