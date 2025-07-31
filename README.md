@@ -6,12 +6,12 @@
 
 This machine project is in fulfillment for the Introduction to Computer Networks Class of De La Salle Univerity of AY2024-2025 Term 3.
 
-| Profile | Author| Aspect |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|--------|
-|[<img src="https://github.com/ClarenceAng.png" width="60px;"/><br /><sub><a href="https://github.com/ClarenceAng"></a></sub>](https://github.com/ClarenceAng/)             | Ang, Clarence <br /> (@ClarenceAng)            | Jarvis |
-|[<img src="https://github.com/ImaginaryLogs.png" width="60px;"/><br /><sub><a href="https://github.com/ImaginaryLogs}"></a></sub>](https://github.com/ImaginaryLogs/)      | Campo, Roan Cedric V. <br /> (@ImaginaryLogs)  | Logs   |
-|[<img src="https://github.com/InsomniacCoffee.png" width="60px;"/><br /><sub><a href="https://github.com/InsomniacCoffee}"></a></sub>](https://github.com/InsomniacCoffee/)| Go, Kenneth D. <br /> (@InsomniacCoffee)       | Coffee |
-|[<img src="https://github.com/nathan1elA.png" width="60px;"/><br /><sub><a href="https://github.com/nathan1elA}"></a></sub>](https://github.com/nathan1elA/)               | Nathaniel <br /> (@nathan1elA)                 | Napalm |
+| Profile                                                                                                                                                                     | Author                                        | Aspect |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------ |
+| [<img src="https://github.com/ClarenceAng.png" width="60px;"/><br /><sub><a href="https://github.com/ClarenceAng"></a></sub>](https://github.com/ClarenceAng/)              | Ang, Clarence <br /> (@ClarenceAng)           | Jarvis |
+| [<img src="https://github.com/ImaginaryLogs.png" width="60px;"/><br /><sub><a href="https://github.com/ImaginaryLogs}"></a></sub>](https://github.com/ImaginaryLogs/)       | Campo, Roan Cedric V. <br /> (@ImaginaryLogs) | Logs   |
+| [<img src="https://github.com/InsomniacCoffee.png" width="60px;"/><br /><sub><a href="https://github.com/InsomniacCoffee}"></a></sub>](https://github.com/InsomniacCoffee/) | Go, Kenneth D. <br /> (@InsomniacCoffee)      | Coffee |
+| [<img src="https://github.com/nathan1elA.png" width="60px;"/><br /><sub><a href="https://github.com/nathan1elA}"></a></sub>](https://github.com/nathan1elA/)                | Nathaniel <br /> (@nathan1elA)                | Napalm |
 
 ## Project Overview
 
@@ -29,14 +29,14 @@ The source code is partially based on the Model-View-Control MVC Format. The pro
 > [!NOTE]
 > Structure of the code:
 >
->```txt
->docs/
+> ```txt
+> docs/
 > ├── CSNETWK MP Rubric.pdf
 > │
 > ├── CSNETWK MP RFC.pdf
 > │
 > └── TaskToDo.md
->src/
+> src/
 > ├── __init__.py
 > │
 > ├── config/                 <--: Configs
@@ -49,9 +49,9 @@ The source code is partially based on the Model-View-Control MVC Format. The pro
 > │   └── ...
 > │
 > ├── protocol/               <--: Protocol and Type Definitions
-> │   ├── ... 
+> │   ├── ...
 > │   │
-> │   └── types/   
+> │   └── types/
 > │       ├── games           <--: Key-Value Dict Type definitions for Tic, Tac, Toe
 > │       │
 > │       └── messages        <--: Key-Value Dict Type definitions for Profiles, DMs, Ack and Ping
@@ -77,42 +77,41 @@ The source code is partially based on the Model-View-Control MVC Format. The pro
 > README.md
 > requirements.txt
 > ...
->```
->
+> ```
 
 When performing Milestone Tracking and Deliverables, it is being done in the [Kanban Board](https://github.com/users/ImaginaryLogs/projects/2)
 
 | Task Role                               | [<img src="https://github.com/ClarenceAng.png" width="60px;"/><br /><sub><a href="https://github.com/ClarenceAng"></a></sub>](https://github.com/ClarenceAng/) @ClarenceAng (Clarence Ang) | [<img src="https://github.com/ImaginaryLogs.png" width="60px;"/><br /><sub><a href="https://github.com/ImaginaryLogs}"></a></sub>](https://github.com/ImaginaryLogs/) @ImaginaryLogs (Roan Cedric V. Campo) | [<img src="https://github.com/InsomniacCoffee.png" width="60px;"/><br /><sub><a href="https://github.com/InsomniacCoffee}"></a></sub>](https://github.com/InsomniacCoffee/) @InsomniacCoffee (Kenneth D. Go) | [<img src="https://github.com/nathan1elA.png" width="60px;"/><br /><sub><a href="https://github.com/nathan1elA}"></a></sub>](https://github.com/nathan1elA/) @nathan1elA (Nathaniel) |
-|-----------------------------------------|---------------------------------------|----------------------------------|-----------------------------|-------------------------|
-| **Network Communication**               |                                       |                                  |                             |                         |
-| UDP Socket Setup                        |                                       |                                  |                             |                         |
-| mDNS Discovery Integration              |                                       |                                  |                             |                         |
-| IP Address Logging                      |                                       |                                  |                             |                         |
-| **Core Feature Implementation**         |                                       |                                  |                             |                         |
-| Core Messaging (POST, DM, LIKE, FOLLOW) |                                       |                                  |                             |                         |
-| File Transfer (Offer, Chunk, ACK)       |                                       |                                  |                             |                         |
-| Tic Tac Toe Game (with recovery)        |                                       |                                  |                             |                         |
-| Group Creation / Messaging              |                                       |                                  |                             |                         |
-| Induced Packet Loss (Game & File)       |                                       |                                  |                             |                         |
-| Acknowledgement / Retry                 |                                       |                                  |                             |                         |
-| **UI & Logging**                        |                                       |                                  |                             |                         |
-| Verbose Mode Support                    |                                       |                                  |                             |                         |
-| Terminal Grid Display                   |                                       |                                  |                             |                         |
-| Message Parsing & Debug Output          |                                       |                                  |                             |                         |
-| **Testing and Validation**              |                                       |                                  |                             |                         |
-| Inter-group Testing                     |                                       |                                  |                             |                         |
-| Correct Parsing Validation              |                                       |                                  |                             |                         |
-| Token Expiry & IP Match                 |                                       |                                  |                             |                         |
-| **Documentation & Coordination**        |                                       |                                  |                             |                         |
-| RFC & Project Report                    |                                       |                                  |                             |                         |
-| Milestone Tracking & Deliverables       |                                       |                                  |                             |                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Network Communication**               |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| UDP Socket Setup                        |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| mDNS Discovery Integration              |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| IP Address Logging                      |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| **Core Feature Implementation**         |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Core Messaging (POST, DM, LIKE, FOLLOW) |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| File Transfer (Offer, Chunk, ACK)       |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Tic Tac Toe Game (with recovery)        |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Group Creation / Messaging              |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Induced Packet Loss (Game & File)       |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Acknowledgement / Retry                 |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| **UI & Logging**                        |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Verbose Mode Support                    |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Terminal Grid Display                   |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Message Parsing & Debug Output          |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| **Testing and Validation**              |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Inter-group Testing                     |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Correct Parsing Validation              |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Token Expiry & IP Match                 |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| **Documentation & Coordination**        |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| RFC & Project Report                    |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Milestone Tracking & Deliverables       |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 
 ## Disclaimer
 
 > [!WARNING]
 >
 > ![ChatGPT](https://img.shields.io/badge/ChatGPT-74aa9c?logo=openai&logoColor=white) ![Claude](https://img.shields.io/badge/Claude-D97757?logo=claude&logoColor=fff)
-> 
+>
 > Parts of the code documentation in this project were generated or assisted by AI tools, including OpenAI's [ChatGPT](https://chatgpt.com/) and Anthropic's [Claude](https://www.anthropic.com/claude). While care has been taken to review and verify the content, automated outputs may contain errors or omissions. Please review critically and contribute improvements where necessary when reading documentation.
 
 ## Installation
@@ -130,7 +129,7 @@ poetry install
 Then, reselect your python interpreter to the local instance.
 
 ```zsh
-# Adds a library 
+# Adds a library
 poetry add 'your-library-to-add'
 
 # Removes a library
@@ -232,7 +231,7 @@ The main logging class that manages all log storage and instance creation.
 
 ###### Methods for Logger
 
-1) > `get_logger(prefix: str, console_enabled: bool = True) -> LoggerInstance`
+1. > `get_logger(prefix: str, console_enabled: bool = True) -> LoggerInstance`
    > Creates or retrieves a logger instance with specific configuration.
    >
    > **Parameters**
@@ -242,7 +241,7 @@ The main logging class that manages all log storage and instance creation.
    >
    > **Returns**: LoggerInstance object
 
-2) > `get_logs(level=None, prefix=None, start_time=None, end_time=None) -> List[LogEntry]`
+2. > `get_logs(level=None, prefix=None, start_time=None, end_time=None) -> List[LogEntry]`
    > Retrieves stored logs with optional filtering.
    >
    > **Parameters**
@@ -254,15 +253,15 @@ The main logging class that manages all log storage and instance creation.
    >
    > **Returns**: List of LogEntry objects matching criteria
 
-3) > `get_all_logs() -> List[LogEntry]`
+3. > `get_all_logs() -> List[LogEntry]`
    >
    > **Returns**: all stored log entries.
 
-4) > `clear_logs() -> None`
+4. > `clear_logs() -> None`
    >
    > Clears all stored log entries.
 
-5) > `get_logs_as_strings(**kwargs) -> List[str]`
+5. > `get_logs_as_strings(**kwargs) -> List[str]`
    >
    > **Returns** logs as formatted strings using the same filtering options as get_logs().
 
@@ -274,23 +273,23 @@ Individual logger instances with specific configurations.
 
 ###### Logging Methods
 
-1) > `input(message: str, end: str = "\n") -> str`
+1. > `input(message: str, end: str = "\n") -> str`
    > Logs input and prompts for user input
-2) > `debug(message: str, end: str = "\n") -> None`
+2. > `debug(message: str, end: str = "\n") -> None`
    > Logs debug messages
-3) > `info(message: str, end: str = "\n") -> None`
+3. > `info(message: str, end: str = "\n") -> None`
    > Logs informational messages
-4) > `warning(message: str, end: str = "\n") -> None`
+4. > `warning(message: str, end: str = "\n") -> None`
    > Logs warnings
-5) > `error(message: str, end: str = "\n") -> None`
+5. > `error(message: str, end: str = "\n") -> None`
    > Logs errors
-6) > `critical(message: str, end: str = "\n") -> None`
+6. > `critical(message: str, end: str = "\n") -> None`
    > Logs critical messages
 
 ###### Configuration Methods
 
-1) `set_console_enabled(enabled: bool) -> None` - Enable/disable console output
-2) `set_prefix(prefix: str) -> None` - Change the instance prefix
+1. `set_console_enabled(enabled: bool) -> None` - Enable/disable console output
+2. `set_prefix(prefix: str) -> None` - Change the instance prefix
 
 #### IP Address Tracker
 
@@ -316,56 +315,91 @@ The IP Address Tracker is a specialized component designed to monitor, track, an
 
 ###### Core Tracking Methods
 
-1) > `__init__(main_logger_instance) -> None`
+1. > `__init__(main_logger_instance) -> None`
    >
    > Initializes the IPAddressTracker with a reference to the main logger instance.
    >
    > **Parameters:**
+   >
    > - `main_logger_instance` - Reference to the main Logger singleton instance for logging activities
 
-2) > `log_new_ip(ip: str, user_id: str = None, context: str = "discovery") -> None`
+2. > `log_new_ip(ip: str, user_id: str = None, context: str = "discovery") -> None`
    >
    > Logs when a new IP address is encountered for the first time.
    >
    > **Parameters:**
+   >
    > - `ip` - The IP address that was discovered
    > - `user_id` - Optional user identifier associated with this IP
    > - `context` - Context of discovery (e.g., "mdns_discovery", "profile_message", "connection")
-   > **Behavior:** Adds IP to known_ips set and creates user mapping if provided. Logs discovery event with context.
+   >   **Behavior:** Adds IP to known_ips set and creates user mapping if provided. Logs discovery event with context.
 
-3) > `log_connection_attempt(ip: str, port: int, success: bool = True) -> None`
+3. > `log_connection_attempt(ip: str, port: int, success: bool = True) -> None`
    >
    > Records connection attempts from specific IP addresses and monitors for suspicious patterns.
    >
    > **Parameters:**
+   >
    > - `ip` - Source IP address of the connection attempt
    > - `port` - Target port number
    > - `success` - Whether the connection attempt was successful
    >
    > **Behavior:** Increments connection counter, logs attempt status, and triggers suspicious activity warnings for excessive failed attempts (>10).
 
-4) > `log_message_flow(from_ip: str, to_ip: str, msg_type: str, size: int) -> None`
+4. > `log_message_flow(from_ip: str, to_ip: str, msg_type: str, size: int) -> None`
    >
    > Tracks message traffic and data flow between IP addresses.
    >
    > **Parameters:**
+   >
    > - `from_ip` - Source IP address sending the message
    > - `to_ip` - Destination IP address receiving the message
    > - `msg_type` - Type of message being sent (e.g., "DM", "PROFILE", "ACK")
    > - `size` - Size of the message in bytes
    >
    > **Behavior:** Logs detailed message flow information for traffic analysis and debugging.
-   >
 
 ###### Analysis and Statistics Methods
 
-5) > `get_ip_stats() -> Dict[str, Any]`
+5. > `get_ip_stats() -> Dict[str, Any]`
    >
    > Generates comprehensive statistics about IP address activity and network patterns.
    >
    > **Returns:** Dictionary containing:
+   >
    > - `total_known_ips: int` - Total number of unique IP addresses encountered
    > - `mapped_users: int` - Number of IP addresses with associated user identifiers
    > - `total_connection_attempts: int` - Sum of all connection attempts across all IPs
    > - `blocked_ips: int` - Number of IP addresses flagged as suspicious or blocked
    > - `top_active_ips: List[Tuple[str, int]]` - Top 5 most active IP addresses with attempt counts
+
+#### LSNP Protocol Parser
+
+The LSNP protocol uses a key-value pair structure with messages separated by newline characters. Each message
+is expected to follow this format:
+
+```
+Key1: Value1
+Key2: Value2
+Key3: Value3
+```
+
+Where each key-value pair is separated by a newline, and messages are separated by an additional newline.
+
+#### Core Parsing Methods
+
+1. parse_lsnp_messages(raw_message: str, verbose: bool) -> dict
+   Args:
+   raw_message (str): The raw LSNP message string to parse.
+   verbose (bool): If True, print debug information
+
+   Returns:
+   dict: A dictionary of key-value pairs extracted from the message.
+
+2. format_lsnp_message(msg_data: dict, verbose: bool) -> str
+   Args
+   msg_dict (dict): Dictionary of key-value pairs.
+   verbose (bool): If True, print debug information
+
+   Returns
+   str: LSNP-formatted message string ending with \n\n.

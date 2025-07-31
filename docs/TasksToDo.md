@@ -1,4 +1,3 @@
-
 # To Do
 
 ## Notes
@@ -35,8 +34,8 @@ Each member has:
   - [ ] Verbose Mode Support for Message Sending and Receiving
   - [ ] mDNS Discovery Integration
 - [x] Protocol Parsing and Message Format
-  - [ ] Detailed report in README for Message Sending and Receiving
-  - [ ] Verbose Mode Support for Message Sending and Receiving
+  - [x] Detailed report in README for Message Sending and Receiving
+  - [x] Verbose Mode Support for Message Sending and Receiving
   - [x] UDP Socket Setup
 
 ### Milestone #2
