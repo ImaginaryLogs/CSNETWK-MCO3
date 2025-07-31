@@ -45,8 +45,8 @@ def test_general():
     
     for i, raw in enumerate(samples, 1):
         print(f"\n--- Test #{i} ---")
-        msg = parse_lsnp_messages(raw)
-        formatted_msg = format_lsnp_message(msg)
+        msg = parse_lsnp_messages(raw, verbose)
+        formatted_msg = format_lsnp_message(msg, verbose)
         assert formatted_msg == correct_output[i - 1]
         print(formatted_msg)
         
