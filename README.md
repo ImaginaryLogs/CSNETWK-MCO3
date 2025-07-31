@@ -181,6 +181,17 @@ poetry run pytest
         - [Methods](#methods)
           - [Core Tracking Methods](#core-tracking-methods)
           - [Analysis and Statistics Methods](#analysis-and-statistics-methods)
+      - [Network Discovery](#network-discovery)
+        - [PeerListener (ServiceListener)](#peerlistener-servicelistener)
+          - [Key Features for PeerListener](#key-features-for-peerlistener)
+          - [Data Structures](#data-structures-1)
+          - [Methods for PeerListener](#methods-for-peerlistener)
+        - [Peer Class](#peer-class)
+          - [Key Features for Peer](#key-features-for-peer)
+          - [Data Structure](#data-structure)
+        - [mDNS Service Registration](#mdns-service-registration)
+          - [Service Registration Process](#service-registration-process)
+          - [Integration with LSNPController](#integration-with-lsnpcontroller)
 
 ### Milestone 1
 
@@ -373,10 +384,110 @@ The IP Address Tracker is a specialized component designed to monitor, track, an
    > - `blocked_ips: int` - Number of IP addresses flagged as suspicious or blocked
    > - `top_active_ips: List[Tuple[str, int]]` - Top 5 most active IP addresses with attempt counts
 
+#### Network Discovery
+
+The Network Discovery system implements mDNS (Multicast DNS) service discovery to automatically find and connect with peers on the local network. It consists of peer management, service registration, and discovery components.
+
+##### PeerListener (ServiceListener)
+
+A specialized service listener that handles mDNS service discovery events for peer-to-peer networking.
+
+###### Key Features for PeerListener
+
+- **Automatic Peer Discovery** - Monitors mDNS broadcasts to discover new peers joining the network
+- **Peer Registration** - Automatically registers discovered peers in the peer mapping system
+- **Service Event Handling** - Responds to service addition, removal, and update events
+- **IP Address Resolution** - Resolves peer IP addresses from mDNS service information
+- **User Identification** - Extracts user identifiers and display names from service properties
+
+###### Data Structures
+
+- `peer_map: Dict[str, Peer]` - Dictionary mapping full user IDs to Peer objects
+- `on_discover: Callable[[Peer], None]` - Callback function executed when new peers are discovered
+
+###### Methods for PeerListener
+
+1. > `__init__(peer_map: Dict[str, Peer], on_discover: Callable[[Peer], None]) -> None`
+   >
+   > Initializes the PeerListener with peer management and discovery callback.
+   >
+   > **Parameters:**
+   >
+   > - `peer_map` - Reference to the main peer dictionary for storing discovered peers
+   > - `on_discover` - Callback function to execute when a new peer is discovered
+
+2. > `add_service(zeroconf: Zeroconf, type: str, name: str) -> None`
+   >
+   > Handles new mDNS service discovery events and registers discovered peers.
+   >
+   > **Parameters:**
+   >
+   > - `zeroconf` - Zeroconf instance for service information retrieval
+   > - `type` - Service type identifier
+   > - `name` - Service name identifier
+   >
+   > **Behavior:** 
+   > - Retrieves service information from mDNS broadcast
+   > - Extracts user_id, display_name, IP address, and port from service properties
+   > - Creates full_user_id in format "user_id@ip_address"
+   > - Prevents duplicate peer registration
+   > - Creates new Peer object and adds to peer_map
+   > - Triggers on_discover callback for newly discovered peers
+
+3. > `remove_service(*args) -> None`
+   >
+   > Handles mDNS service removal events (currently no-op implementation).
+
+4. > `update_service(*args) -> None`
+   >
+   > Handles mDNS service update events (currently no-op implementation).
+
+##### Peer Class
+
+Represents a discovered network peer with connection information.
+
+###### Key Features for Peer
+
+- **User Identification** - Stores unique user ID and display name
+- **Network Information** - Maintains IP address and port for communication
+- **Connection State** - Tracks peer availability and connection status
+
+###### Data Structure
+
+```python
+class Peer:
+    user_id: str        # Full user ID in format "username@ip_address"
+    display_name: str   # Human-readable display name
+    ip: str            # IP address for network communication
+    port: int          # Port number for UDP communication
+```
+
+##### mDNS Service Registration
+
+The system automatically registers each peer as an mDNS service for network-wide discovery.
+
+###### Service Registration Process
+
+1. **Service Type** - Uses predefined `MDNS_SERVICE_TYPE` for service identification
+2. **Service Name** - Formats as `{user_id}_at_{ip_with_underscores}.{service_type}`
+3. **Service Properties** - Includes:
+   - `user_id` - Unique identifier for the user
+   - `display_name` - Human-readable name for display purposes
+4. **Network Information** - Binds to peer's IP address and communication port
+5. **Automatic Broadcasting** - Continuously broadcasts service availability on the network
+
+###### Integration with LSNPController
+
+The mDNS system integrates seamlessly with the main `LSNPController`:
+
+- **Service Browser** - Automatically starts mDNS service discovery on initialization
+- **Peer Callback** - Registers discovered peers and logs discovery events
+- **IP Tracking** - Integrates with IP Address Tracker for network monitoring
+- **Connection Management** - Maintains peer connection state and availability
+
 #### LSNP Protocol Parser
 
-The LSNP protocol uses a key-value pair structure with messages separated by newline characters. Each message
-is expected to follow this format:
+The LSNP protocol uses a key-value pair structure with messages separated by newline characters. Each message is expected to follow this format:
 
 ```
 Key1: Value1
@@ -386,20 +497,155 @@ Key3: Value3
 
 Where each key-value pair is separated by a newline, and messages are separated by an additional newline.
 
-#### Core Parsing Methods
+##### Core Parsing Methods
 
-1. parse_lsnp_messages(raw_message: str, verbose: bool) -> dict
-   Args:
-   raw_message (str): The raw LSNP message string to parse.
-   verbose (bool): If True, print debug information
+1. > `parse_lsnp_messages(raw_message: str, verbose: bool) -> dict`
+   >
+   > Parses raw LSNP message strings into structured key-value dictionaries.
+   >
+   > **Parameters:**
+   >
+   > - `raw_message (str)` - The raw LSNP message string to parse
+   > - `verbose (bool)` - If True, print debug information during parsing
+   >
+   > **Returns:** Dictionary of key-value pairs extracted from the message
+   >
+   > **Behavior:** Splits message by newlines, processes each key-value pair, handles malformed entries gracefully
 
-   Returns:
-   dict: A dictionary of key-value pairs extracted from the message.
+2. > `format_lsnp_message(msg_data: dict, verbose: bool) -> str`
+   >
+   > Formats dictionary data into LSNP protocol message format.
+   >
+   > **Parameters:**
+   >
+   > - `msg_dict (dict)` - Dictionary of key-value pairs to format
+   > - `verbose (bool)` - If True, print debug information during formatting
+   >
+   > **Returns:** LSNP-formatted message string ending with `\n\n`
+   >
+   > **Behavior:** Converts dictionary to key-value format, ensures proper message termination
 
-2. format_lsnp_message(msg_data: dict, verbose: bool) -> str
-   Args
-   msg_dict (dict): Dictionary of key-value pairs.
-   verbose (bool): If True, print debug information
+#### LSNPController
 
-   Returns
-   str: LSNP-formatted message string ending with \n\n.
+The main controller class that manages peer-to-peer networking, message handling, and service discovery for the Local Social Network Protocol.
+
+##### Key Features for LSNPController
+
+- **UDP Socket Management** - Handles UDP socket creation, binding, and broadcasting
+- **mDNS Integration** - Automatic peer discovery and service registration
+- **Message Processing** - Handles both key-value and legacy JSON message formats
+- **Direct Messaging** - Reliable message delivery with acknowledgment and retry mechanisms
+- **Profile Broadcasting** - Periodic and manual profile announcements to peers
+- **IP Address Tracking** - Comprehensive network monitoring and statistics
+- **Peer Management** - Maintains active peer connections and availability
+
+##### Data Structures
+
+- `user_id: str` - Unique identifier for this peer
+- `display_name: str` - Human-readable name for display
+- `ip: str` - Own IP address for network communication
+- `port: int` - UDP port for message reception
+- `full_user_id: str` - Complete identifier in format "user_id@ip_address"
+- `peer_map: Dict[str, Peer]` - Active peer connections
+- `inbox: List[str]` - Received message storage
+- `ack_events: Dict[str, threading.Event]` - Acknowledgment tracking for sent messages
+
+##### Core Methods
+
+1. > `__init__(user_id: str, display_name: str, port: int = LSNP_PORT, verbose: bool = True) -> None`
+   >
+   > Initializes the LSNP controller with user information and network configuration.
+   >
+   > **Parameters:**
+   >
+   > - `user_id` - Unique identifier for this peer
+   > - `display_name` - Human-readable display name
+   > - `port` - UDP port for communication (default: LSNP_PORT)
+   > - `verbose` - Enable detailed logging and debug output
+   >
+   > **Behavior:** Sets up UDP socket, registers mDNS service, starts background threads, initializes IP tracker
+
+2. > `send_dm(recipient_id: str, content: str) -> None`
+   >
+   > Sends direct messages to specified peers with acknowledgment and retry logic.
+   >
+   > **Parameters:**
+   >
+   > - `recipient_id` - Target peer identifier (accepts "user" or "user@ip" format)
+   > - `content` - Message content to send
+   >
+   > **Behavior:** Validates recipient, generates message token, implements retry mechanism with exponential backoff, tracks acknowledgments
+
+3. > `broadcast_profile() -> None`
+   >
+   > Broadcasts profile information to all known peers in the network.
+   >
+   > **Behavior:** Sends profile message to all peers in peer_map, logs successful and failed transmissions
+
+4. > `list_peers() -> None`
+   >
+   > Displays information about all discovered and active peers.
+   >
+   > **Output:** Shows peer count, display names, user IDs, and network addresses
+
+5. > `show_inbox() -> None`
+   >
+   > Displays all received messages in chronological order.
+   >
+   > **Output:** Formatted message list with timestamps and sender information
+
+6. > `show_ip_stats() -> None`
+   >
+   > Displays comprehensive IP address and network activity statistics.
+   >
+   > **Output:** Total IPs, mapped users, connection attempts, blocked IPs, and most active addresses
+
+##### Message Handling
+
+###### Key-Value Message Processing
+
+The controller handles LSNP protocol messages in key-value format:
+
+- **PROFILE Messages** - Peer discovery and registration
+- **DM Messages** - Direct message delivery with token validation
+- **ACK Messages** - Message acknowledgment handling
+- **PING Messages** - Network connectivity testing
+
+###### Legacy JSON Support
+
+Maintains backward compatibility with JSON message format for transition period.
+
+##### Network Integration
+
+###### UDP Socket Configuration
+
+- **Broadcasting Enabled** - Supports network-wide message distribution
+- **Non-blocking Reception** - Continuous message listening without blocking main thread
+- **Error Handling** - Graceful handling of malformed messages and network errors
+
+###### Threading Architecture
+
+- **Message Listener** - Dedicated thread for incoming message processing
+- **mDNS Browser** - Background service discovery monitoring
+- **Periodic Broadcasting** - Scheduled profile announcements every 5 minutes
+
+##### Command Interface
+
+The controller provides an interactive command-line interface:
+
+- `help` - Display available commands
+- `peers` - List discovered peers
+- `dms` - Show message inbox
+- `dm <user> <message>` - Send direct message
+- `broadcast` - Manual profile broadcast
+- `ping` - Send network ping
+- `verbose` - Toggle debug output
+- `ipstats` - Display IP statistics
+- `quit` - Exit application
+
+##### Error Handling and Reliability
+
+- **Token Validation** - Ensures message authenticity and prevents replay attacks
+- **Retry Mechanism** - Automatic retransmission for failed message delivery
+- **Connection Monitoring** - Tracks failed connection attempts and suspicious activity
+- **Graceful Degradation** - Continues operation despite individual peer failures
