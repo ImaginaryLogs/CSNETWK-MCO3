@@ -10,6 +10,7 @@ from src.config import *
 from src.protocol import *
 from src.utils import *
 from src.network import *
+from src.manager.follow_controller import * 
 
 logger = logging.Logger()
 
@@ -167,17 +168,32 @@ class LSNPController:
 			self._send_ack(message_id, addr)
    
 		elif msg_type == "FOLLOW":
-			from_id = kv.get("USER_ID", "")
-			display_name = kv.get("DISPLAY_NAME", "")
-			lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) is now following you.")
-			self.inbox.append(f"User {display_name} started following you.")
+			from_id = kv.get("FROM", "")
+			to_id = kv.get("TO", "")
+			display_name = from_id.split('@')[0]
+			
+			if to_id == self.full_user_id:
+					lsnp_logger.info(f"[NOTIFY] {display_name} is now following you.")
+					self.inbox.append(f"User {display_name} started following you.")
 
 		elif msg_type == "UNFOLLOW":
 				from_id = kv.get("USER_ID", "")
 				display_name = kv.get("DISPLAY_NAME", "")
 				lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) has unfollowed you.")
 				self.inbox.append(f"User {display_name} unfollowed you.")
-			
+		
+		elif msg_type == "POST":
+			from_id = kv.get("FROM", "")
+			token = kv.get("TOKEN", "")
+			if not validate_token(token, "post"):
+					lsnp_logger.warning(f"[POST REJECTED] Invalid token from {from_id}")
+					return
+			content = kv.get("CONTENT", "")
+			timestamp = kv.get("TIMESTAMP", "")
+			display_name = from_id.split('@')[0]
+			lsnp_logger.info(f"[POST] {display_name}: {content}")
+			self.inbox.append(f"[{timestamp}] {display_name} (POST): {content}")
+
 		elif msg_type == "ACK":
 			message_id = kv.get("MESSAGE_ID", "")
 			if message_id in self.ack_events:
@@ -283,77 +299,6 @@ class LSNPController:
 
 		lsnp_logger.error(f"[FAILED] DM to {peer.display_name} at {peer.ip}")
 		del self.ack_events[message_id]
-  
-	# def send_post(self, user_id: str):
-	# 	for user_id in self.followers:
-			
-	def follow(self, user_id: str):
-		if "@" not in user_id:
-			# Find the full user_id in peer_map
-			full_user_id = None
-			for id in self.peer_map:
-				if id.startswith(f"{user_id}@"):
-					full_user_id = user_id
-					break
-			if not full_user_id:
-				lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
-				return
-			user_id = full_user_id
-   
-		if user_id not in self.peer_map:
-			lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}") 
-			return
-		elif user_id in self.followers:
-			lsnp_logger.warning(f"[FOLLOW] Already following {user_id}")
-			return
-		else:
-			lsnp_logger.info(f"[FOLLOW] Now following {user_id}")
-			self.followers.append(user_id)
-	
-			peer = self.peer_map[user_id]
-			msg = f"TYPE: FOLLOW\nUSER_ID: {self.full_user_id}\nDISPLAY_NAME: {self.display_name}\n\n"
-			
-			try:
-				self.socket.sendto(msg.encode(), (peer.ip, peer.port))
-				lsnp_logger.info(f"[FOLLOW SENT] To {peer.display_name} ({peer.ip})")
-				if self.verbose:
-					lsnp_logger_v.info(f"[FOLLOW MSG] {msg.strip()}")
-			except Exception as e:
-				lsnp_logger.error(f"[FOLLOW FAILED] To {peer.ip} - {e}")
-   
-	def unfollow(self, user_id: str):
-   
-		if "@" not in user_id:
-			# Find the full user_id in peer_map
-			full_user_id = None
-			for id in self.peer_map:
-				if id.startswith(f"{user_id}@"):
-					full_user_id = user_id
-					break
-			if not full_user_id:
-				lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
-				return
-			user_id = full_user_id
-   
-		if user_id not in self.peer_map:
-			lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}") 
-			return
-		elif user_id not in self.followers:
-			lsnp_logger.warning(f"[FOLLOW] Not following {user_id}")
-			return
-		else:
-			lsnp_logger.info(f"[FOLLOW] Now unfollowing {user_id}")
-			self.followers.remove(user_id) 
-   
-			peer = self.peer_map[user_id]
-			msg = f"TYPE: UNFOLLOW\nUSER_ID: {self.full_user_id}\nDISPLAY_NAME: {self.display_name}\n\n"
-			try:
-				self.socket.sendto(msg.encode(), (peer.ip, peer.port))
-				lsnp_logger.info(f"[UNFOLLOW SENT] To {peer.display_name} ({peer.ip})")
-				if self.verbose:
-					lsnp_logger_v.info(f"[UNFOLLOW MSG] {msg.strip()}")
-			except Exception as e:
-				lsnp_logger.error(f"[UNFOLLOW FAILED] To {peer.ip} - {e}")
     	
 	def broadcast_profile(self):	
 		msg = make_profile_message(self.display_name, self.user_id, self.ip)
