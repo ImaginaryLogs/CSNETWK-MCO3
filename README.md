@@ -192,7 +192,7 @@ poetry run pytest
         - [mDNS Service Registration](#mdns-service-registration)
           - [Service Registration Process](#service-registration-process)
           - [Integration with LSNPController](#integration-with-lsnpcontroller)
-          
+
 ### Milestone 1
 
 #### Logging
@@ -426,7 +426,8 @@ A specialized service listener that handles mDNS service discovery events for pe
    > - `type` - Service type identifier
    > - `name` - Service name identifier
    >
-   > **Behavior:** 
+   > **Behavior:**
+   >
    > - Retrieves service information from mDNS broadcast
    > - Extracts user_id, display_name, IP address, and port from service properties
    > - Creates full_user_id in format "user_id@ip_address"
@@ -535,7 +536,7 @@ The main controller class that manages peer-to-peer networking, message handling
 - **mDNS Integration** - Automatic peer discovery and service registration
 - **Message Processing** - Handles both key-value and legacy JSON message formats
 - **Direct Messaging** - Reliable message delivery with acknowledgment and retry mechanisms
-- **Profile Broadcasting** - Periodic and manual profile announcements to peers
+- **Ping and Profile Broadcasting** - Periodic and manual profile announcements to peers
 - **IP Address Tracking** - Comprehensive network monitoring and statistics
 - **Peer Management** - Maintains active peer connections and availability
 
@@ -627,7 +628,7 @@ Maintains backward compatibility with JSON message format for transition period.
 
 - **Message Listener** - Dedicated thread for incoming message processing
 - **mDNS Browser** - Background service discovery monitoring
-- **Periodic Broadcasting** - Scheduled profile announcements every 5 minutes
+- **Periodic Broadcasting** - Scheduled profile and ping announcements every 5 minutes
 
 ##### Command Interface
 
@@ -649,4 +650,3 @@ The controller provides an interactive command-line interface:
 - **Retry Mechanism** - Automatic retransmission for failed message delivery
 - **Connection Monitoring** - Tracks failed connection attempts and suspicious activity
 - **Graceful Degradation** - Continues operation despite individual peer failures
-
