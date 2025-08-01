@@ -190,7 +190,13 @@ class LSNPController:
 					return
 			content = kv.get("CONTENT", "")
 			timestamp = kv.get("TIMESTAMP", "")
-			display_name = from_id.split('@')[0]
+			display_name = None
+			for peer in self.peer_map.values():
+					if peer.user_id == from_id:
+							display_name = peer.display_name
+							break
+			if not display_name:
+					display_name = from_id.split('@')[0]
 			lsnp_logger.info(f"[POST] {display_name}: {content}")
 			self.inbox.append(f"[{timestamp}] {display_name} (POST): {content}")
 
