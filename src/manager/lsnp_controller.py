@@ -31,6 +31,7 @@ class LSNPController:
 		self.full_user_id = f"{self.user_id}@{self.ip}"
 		self.peer_map: Dict[str, Peer] = {}
 		self.inbox: List[str] = []
+		self.followers: List[str] = []
 		self.ack_events: Dict[str, threading.Event] = {}
 
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -164,7 +165,19 @@ class LSNPController:
 			lsnp_logger.info(f"{display_name}: {content}")
 			self.inbox.append(f"[{timestamp}] {display_name}: {content}")
 			self._send_ack(message_id, addr)
-		
+   
+		elif msg_type == "FOLLOW":
+			from_id = kv.get("USER_ID", "")
+			display_name = kv.get("DISPLAY_NAME", "")
+			lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) is now following you.")
+			self.inbox.append(f"User {display_name} started following you.")
+
+		elif msg_type == "UNFOLLOW":
+				from_id = kv.get("USER_ID", "")
+				display_name = kv.get("DISPLAY_NAME", "")
+				lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) has unfollowed you.")
+				self.inbox.append(f"User {display_name} unfollowed you.")
+			
 		elif msg_type == "ACK":
 			message_id = kv.get("MESSAGE_ID", "")
 			if message_id in self.ack_events:
@@ -270,8 +283,54 @@ class LSNPController:
 
 		lsnp_logger.error(f"[FAILED] DM to {peer.display_name} at {peer.ip}")
 		del self.ack_events[message_id]
-
-	def broadcast_profile(self):
+  
+	# def send_post(self, user_id: str):
+	# 	for user_id in self.followers:
+			
+	def follow(self, user_id: str):
+		if user_id not in self.peer_map:
+			lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}") 
+			return
+		elif user_id in self.followers:
+			lsnp_logger.warning(f"[FOLLOW] Already following {user_id}")
+			return
+		else:
+			lsnp_logger.info(f"[FOLLOW] Now following {user_id}")
+			self.followers.append(user_id)
+	
+			peer = self.peer_map[user_id]
+			msg = f"TYPE: FOLLOW\nUSER_ID: {self.full_user_id}\nDISPLAY_NAME: {self.display_name}\n\n"
+			
+			try:
+				self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+				lsnp_logger.info(f"[FOLLOW SENT] To {peer.display_name} ({peer.ip})")
+				if self.verbose:
+					lsnp_logger_v.info(f"[FOLLOW MSG] {msg.strip()}")
+			except Exception as e:
+				lsnp_logger.error(f"[FOLLOW FAILED] To {peer.ip} - {e}")
+   
+	def unfollow(self, user_id: str):
+		if user_id not in self.peer_map:
+			lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}") 
+			return
+		elif user_id not in self.followers:
+			lsnp_logger.warning(f"[FOLLOW] Not following {user_id}")
+			return
+		else:
+			lsnp_logger.info(f"[FOLLOW] Now unfollowing {user_id}")
+			self.followers.remove(user_id) 
+   
+			peer = self.peer_map[user_id]
+			msg = f"TYPE: UNFOLLOW\nUSER_ID: {self.full_user_id}\nDISPLAY_NAME: {self.display_name}\n\n"
+			try:
+				self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+				lsnp_logger.info(f"[UNFOLLOW SENT] To {peer.display_name} ({peer.ip})")
+				if self.verbose:
+					lsnp_logger_v.info(f"[UNFOLLOW MSG] {msg.strip()}")
+			except Exception as e:
+				lsnp_logger.error(f"[UNFOLLOW FAILED] To {peer.ip} - {e}")
+    	
+	def broadcast_profile(self):	
 		msg = make_profile_message(self.display_name, self.user_id, self.ip)
 		broadcast_count = 0
 	
@@ -356,7 +415,7 @@ class LSNPController:
 			try:
 				cmd = lsnp_logger.input("", end="").strip()
 				if cmd == "help":
-					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  quit            - Exit"
+					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  follow <user>   - Follow a user\n  unfollow <user> - Unfollow a user\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  quit            - Exit"
 					lsnp_logger.info(help_str)
 				elif cmd == "peers":
 					self.list_peers()
@@ -369,6 +428,27 @@ class LSNPController:
 						continue
 					_, recipient_id, message = parts
 					self.send_dm(recipient_id, message)
+				elif cmd.startswith("follow "):
+					parts = cmd.split(" ", 2)
+					if len(parts) < 2:
+						lsnp_logger.info("Usage: follow <user_id>")
+						continue
+					_, user_id = parts
+					self.follow(user_id)
+				elif cmd.startswith("unfollow "):
+					parts = cmd.split(" ", 2)
+					if len(parts) < 2:
+						lsnp_logger.info("Usage: unfollow <user_id>")
+						continue
+					_, user_id = parts
+					self.unfollow(user_id)
+				elif cmd.startswith("post "):
+					parts = cmd.split(" ", 2)
+					if len(parts) < 2:
+						lsnp_logger.info("Usage: post <message>")
+						continue
+					_, message = parts
+					self.send_post(message)
 				elif cmd == "broadcast":
 					self.broadcast_profile()
 				elif cmd == "ping":
