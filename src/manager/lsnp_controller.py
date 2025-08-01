@@ -3,6 +3,8 @@ import threading
 import time
 import json
 import uuid
+import os
+import base64
 from typing import Dict, List, Callable, Tuple
 from zeroconf import Zeroconf, ServiceInfo, ServiceBrowser, ServiceListener
 from src.ui import logging
@@ -22,11 +24,12 @@ lsnp_logger_v = logger.get_logger(f'{LSNP_PREFIX} |:')
 LSNP_BROADCAST_PERIOD_SECONDS = 300 # 5 minutes
 
 class LSNPController:
-	def __init__(self, user_id: str, display_name: str, port: int = LSNP_PORT, verbose: bool = True):
+	def __init__(self, user_id: str, display_name: str, port: int = LSNP_PORT, verbose: bool = True, avatar_path: str = None):
 		self.user_id = user_id
 		self.display_name = display_name
 		self.port = port
 		self.verbose = verbose
+		self.avatar_path = avatar_path
 		self.ip = self._get_own_ip()
 		self.full_user_id = f"{self.user_id}@{self.ip}"
 		self.peer_map: Dict[str, Peer] = {}
@@ -116,16 +119,26 @@ class LSNPController:
 		if msg_type == "PROFILE":
 			from_id = kv.get("USER_ID", "")
 			display_name = kv.get("DISPLAY_NAME", "")
+			avatar_data = kv.get("AVATAR_DATA")
+			avatar_type = kv.get("AVATAR_TYPE")
+
 			ip = addr[0]
 			port = addr[1]
 
 			self.ip_tracker.log_new_ip(sender_ip, from_id, "profile_message")
 
 			if from_id not in self.peer_map:
-				peer = Peer(from_id, display_name, ip, port)
-				self.peer_map[from_id] = peer
-				
-				if self.verbose:
+					peer = Peer(from_id, display_name, ip, port)
+					peer.avatar_data = avatar_data
+					peer.avatar_type = avatar_type
+					self.peer_map[from_id] = peer
+			else:
+					# Update existing peer
+					self.peer_map[from_id].display_name = display_name
+					self.peer_map[from_id].avatar_data = avatar_data
+					self.peer_map[from_id].avatar_type = avatar_type
+
+			if self.verbose:
 					lsnp_logger_v.info(f"[PROFILE] {display_name} ({from_id}) joined from {ip}")
 		
 		elif msg_type == "DM":
@@ -272,22 +285,41 @@ class LSNPController:
 		del self.ack_events[message_id]
 
 	def broadcast_profile(self):
-		msg = make_profile_message(self.display_name, self.user_id, self.ip)
-		broadcast_count = 0
-	
-		for peer in self.peer_map.values():
+		# Build the PROFILE message
+		msg = make_profile_message(self.display_name, self.full_user_id, self.avatar_path)
+  
+		preview = None
+		if self.avatar_path and os.path.isfile(self.avatar_path):
 			try:
-				self.socket.sendto(msg.encode(), (peer.ip, peer.port))
-				broadcast_count += 1
-				lsnp_logger.info(f"[BROADCAST] Sent to {peer.ip}:{peer.port}")
+				with open(self.avatar_path, "rb") as img_file:
+						avatar_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+				preview = avatar_base64[:20] + "..." if len(avatar_base64) > 20 else avatar_base64
 			except Exception as e:
-				lsnp_logger.error("[BROADCAST] FAILED: To {peer.ip} - {e}")
-				
-		lsnp_logger.info(f"PROFILE BROADCAST: Sent to {broadcast_count} peers")
-	
-		if self.verbose:
-			lsnp_logger_v.info("[BROADCAST] Profile message sent.")
+						lsnp_logger.error(f"[DEBUG] Failed to generate avatar preview: {e}")
+            
 
+			# Log the message but without showing full AVATAR_DATA
+		safe_log_msg = msg
+		if "AVATAR_DATA" in safe_log_msg:
+				# Replace the full avatar data with a placeholder in the log
+				safe_log_msg = safe_log_msg.replace(
+						msg.split("AVATAR_DATA: ")[1].split("\n", 1)[0],
+						preview if preview else "[hidden]"
+				)
+
+		lsnp_logger.info(f"[DEBUG] PROFILE message to send:\n{safe_log_msg}")
+        
+		# Broadcast to the subnet
+		broadcast_addr = self.ip.rsplit('.', 1)[0] + '.255'
+
+		try:
+				self.socket.sendto(msg.encode(), (broadcast_addr, self.port))
+				lsnp_logger.info(f"[PROFILE BROADCAST] Sent to {broadcast_addr}:{self.port}")
+		except Exception as e:
+				lsnp_logger.error(f"[BROADCAST FAILED] {e}")
+
+		if self.verbose:
+				lsnp_logger_v.info("[BROADCAST] Profile message sent.")
 
 	def _periodic_tasks(self):
 		while True:
