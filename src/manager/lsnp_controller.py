@@ -10,6 +10,7 @@ from src.config import *
 from src.protocol import *
 from src.utils import *
 from src.network import *
+from src.manager.follow_controller import * 
 
 logger = logging.Logger()
 
@@ -31,6 +32,7 @@ class LSNPController:
 		self.full_user_id = f"{self.user_id}@{self.ip}"
 		self.peer_map: Dict[str, Peer] = {}
 		self.inbox: List[str] = []
+		self.followers: List[str] = []
 		self.ack_events: Dict[str, threading.Event] = {}
 
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -164,7 +166,40 @@ class LSNPController:
 			lsnp_logger.info(f"{display_name}: {content}")
 			self.inbox.append(f"[{timestamp}] {display_name}: {content}")
 			self._send_ack(message_id, addr)
+   
+		elif msg_type == "FOLLOW":
+			from_id = kv.get("FROM", "")
+			to_id = kv.get("TO", "")
+			display_name = from_id.split('@')[0]
+			
+			if to_id == self.full_user_id:
+					lsnp_logger.info(f"[NOTIFY] {display_name} is now following you.")
+					self.inbox.append(f"User {display_name} started following you.")
+
+		elif msg_type == "UNFOLLOW":
+				from_id = kv.get("USER_ID", "")
+				display_name = kv.get("DISPLAY_NAME", "")
+				lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) has unfollowed you.")
+				self.inbox.append(f"User {display_name} unfollowed you.")
 		
+		elif msg_type == "POST":
+			from_id = kv.get("FROM", "")
+			token = kv.get("TOKEN", "")
+			if not validate_token(token, "post"):
+					lsnp_logger.warning(f"[POST REJECTED] Invalid token from {from_id}")
+					return
+			content = kv.get("CONTENT", "")
+			timestamp = kv.get("TIMESTAMP", "")
+			display_name = None
+			for peer in self.peer_map.values():
+					if peer.user_id == from_id:
+							display_name = peer.display_name
+							break
+			if not display_name:
+					display_name = from_id.split('@')[0]
+			lsnp_logger.info(f"[POST] {display_name}: {content}")
+			self.inbox.append(f"[{timestamp}] {display_name} (POST): {content}")
+
 		elif msg_type == "ACK":
 			message_id = kv.get("MESSAGE_ID", "")
 			if message_id in self.ack_events:
@@ -270,8 +305,8 @@ class LSNPController:
 
 		lsnp_logger.error(f"[FAILED] DM to {peer.display_name} at {peer.ip}")
 		del self.ack_events[message_id]
-
-	def broadcast_profile(self):
+    	
+	def broadcast_profile(self):	
 		msg = make_profile_message(self.display_name, self.user_id, self.ip)
 		broadcast_count = 0
 	
@@ -357,7 +392,7 @@ class LSNPController:
 			try:
 				cmd = lsnp_logger.input("", end="").strip()
 				if cmd == "help":
-					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  quit            - Exit"
+					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  follow <user>   - Follow a user\n  unfollow <user> - Unfollow a user\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  quit            - Exit"
 					lsnp_logger.info(help_str)
 				elif cmd == "peers":
 					self.list_peers()
@@ -370,6 +405,27 @@ class LSNPController:
 						continue
 					_, recipient_id, message = parts
 					self.send_dm(recipient_id, message)
+				elif cmd.startswith("follow "):
+					parts = cmd.split(" ", 2)
+					if len(parts) < 2:
+						lsnp_logger.info("Usage: follow <user_id>")
+						continue
+					_, user_id = parts
+					self.follow(user_id)
+				elif cmd.startswith("unfollow "):
+					parts = cmd.split(" ", 2)
+					if len(parts) < 2:
+						lsnp_logger.info("Usage: unfollow <user_id>")
+						continue
+					_, user_id = parts
+					self.unfollow(user_id)
+				elif cmd.startswith("post "):
+					parts = cmd.split(" ", 2)
+					if len(parts) < 2:
+						lsnp_logger.info("Usage: post <message>")
+						continue
+					_, message = parts
+					self.send_post(message)
 				elif cmd == "broadcast":
 					self.broadcast_profile()
 				elif cmd == "ping":
