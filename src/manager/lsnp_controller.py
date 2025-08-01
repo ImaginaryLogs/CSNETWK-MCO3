@@ -288,6 +288,18 @@ class LSNPController:
 	# 	for user_id in self.followers:
 			
 	def follow(self, user_id: str):
+		if "@" not in user_id:
+			# Find the full user_id in peer_map
+			full_user_id = None
+			for id in self.peer_map:
+				if id.startswith(f"{user_id}@"):
+					full_user_id = user_id
+					break
+			if not full_user_id:
+				lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
+				return
+			user_id = full_user_id
+   
 		if user_id not in self.peer_map:
 			lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}") 
 			return
@@ -310,6 +322,19 @@ class LSNPController:
 				lsnp_logger.error(f"[FOLLOW FAILED] To {peer.ip} - {e}")
    
 	def unfollow(self, user_id: str):
+   
+		if "@" not in user_id:
+			# Find the full user_id in peer_map
+			full_user_id = None
+			for id in self.peer_map:
+				if id.startswith(f"{user_id}@"):
+					full_user_id = user_id
+					break
+			if not full_user_id:
+				lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
+				return
+			user_id = full_user_id
+   
 		if user_id not in self.peer_map:
 			lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}") 
 			return
