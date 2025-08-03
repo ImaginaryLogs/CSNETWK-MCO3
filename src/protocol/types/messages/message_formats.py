@@ -65,3 +65,14 @@ def make_post_message(from_id: str, content: str, ttl: int, message_id: str, tok
         "MESSAGE_ID": message_id,
         "TOKEN": token
     })
+    
+def make_like_message(from_id: str, to_id: str, post_timestamp_id: str, action: str, timestamp: str, token: str):
+    return format_kv_message({
+        "TYPE": "LIKE",
+        "FROM": from_id,
+        "TO": to_id,
+        "POST_TIMESTAMP": post_timestamp_id,
+        "ACTION": action,
+        "TIMESTAMP": timestamp,
+        "TOKEN": token
+    })

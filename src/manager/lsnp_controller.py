@@ -34,6 +34,7 @@ class LSNPController:
 		self.inbox: List[str] = []
 		self.following: set[str] = set()
 		self.followers: set[str] = set()
+		self.post_likes: set[str] = set()
 		self.ack_events: Dict[str, threading.Event] = {}
 		# self.follow = lambda user_id: post_controller.follow(self, user_id)
 		# self.unfollow = lambda user_id: post_controller.unfollow(self, user_id)
@@ -259,6 +260,31 @@ class LSNPController:
 
 			# Send ACK back
 			self._send_ack(message_id, addr)
+   
+		elif msg_type == "LIKE":
+			from_id = kv.get("FROM", "")
+			to_id = kv.get("TO", "")
+			post_timestamp_id = kv.get("POST_TIMESTAMP", "")
+			token = kv.get("TOKEN", "")
+			timestamp = kv.get("TIMESTAMP", "")
+			action_type = kv.get("ACTION", "")
+
+			if to_id != self.full_user_id:
+					if self.verbose:
+							lsnp_logger_v.info(f"[{action_type} IGNORED] Not for us: {to_id}")
+					return
+
+			if not validate_token(token, msg_type.lower()):
+					lsnp_logger.warning(f"[{action_type} REJECTED] Invalid token from {from_id}")
+					return
+
+			display_name = from_id.split('@')[0]
+			if action_type == "LIKE":
+					lsnp_logger.info(f"[LIKE RECEIVED] {display_name} liked your post {post_timestamp_id}")
+			else:
+					lsnp_logger.info(f"[UNLIKE RECEIVED] {display_name} unliked your post {post_timestamp_id}")
+
+			self._send_ack(timestamp, addr)
 
 		elif msg_type == "ACK":
 			message_id = kv.get("MESSAGE_ID", "")
@@ -651,6 +677,60 @@ class LSNPController:
 				if mid in self.ack_events:
 						del self.ack_events[mid]
 
+	def toggle_like(self, post_timestamp_id: str, owner_name: str):
+    # Resolve short name to full_user_id using peer_map
+		full_owner_id = None
+		for peer in self.peer_map.values():
+				if peer.display_name == owner_name or peer.user_id.startswith(f"{owner_name}@"):
+						full_owner_id = peer.user_id
+						break
+
+		if not full_owner_id:
+				lsnp_logger.error(f"[LIKE ERROR] Unknown post owner: {owner_name}")
+				return
+
+		peer = self.peer_map[full_owner_id]
+		timestamp = str(int(time.time()))
+
+		# Determine action (LIKE or UNLIKE)
+		action = "UNLIKE" if post_timestamp_id in self.post_likes else "LIKE"
+		token = generate_token(self.full_user_id, "like")
+
+		# Build LIKE message
+		msg = make_like_message(
+				from_id=self.full_user_id,
+				to_id=full_owner_id,
+				post_timestamp_id=post_timestamp_id,
+				action=action,
+				timestamp=timestamp,
+				token=token
+		)
+
+		# ACK handling
+		ack_event = threading.Event()
+		self.ack_events[timestamp] = ack_event
+
+		for attempt in range(RETRY_COUNT):
+				self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+				if self.verbose:
+						lsnp_logger_v.info(f"[{action} SEND] Attempt {attempt + 1} to {peer.display_name} at {peer.ip}")
+
+				if ack_event.wait(RETRY_INTERVAL):
+						if action == "LIKE":
+								self.post_likes.add(post_timestamp_id)
+								lsnp_logger.info(f"[LIKE CONFIRMED] Post {post_timestamp_id} by {peer.display_name}")
+						else:
+								self.post_likes.remove(post_timestamp_id)
+								lsnp_logger.info(f"[UNLIKE CONFIRMED] Post {post_timestamp_id} by {peer.display_name}")
+						del self.ack_events[timestamp]
+						return
+
+				if self.verbose:
+						lsnp_logger_v.info(f"[{action} RETRY] {attempt + 1} for {peer.display_name}")
+
+		lsnp_logger.error(f"[{action} FAILED] Could not send {action} to {peer.display_name}")
+		del self.ack_events[timestamp]
+
 
 
 
@@ -662,7 +742,7 @@ class LSNPController:
 			try:
 				cmd = lsnp_logger.input("", end="").strip()
 				if cmd == "help":
-					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  post <content>  - Post for your followers\n  ttl <number>  - Set the TTL\n  follow <user>   - Follow a user\n  unfollow <user> - Unfollow a user\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  quit            - Exit"
+					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  post <content>  - Post for your followers\n  like <post_timestamp> <user_id> - Like a user's post\n  ttl <number>    - Set the TTL\n  follow <user>   - Follow a user\n  unfollow <user> - Unfollow a user\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  quit            - Exit"
 					lsnp_logger.info(help_str)
 				elif cmd == "peers":
 					self.list_peers()
@@ -682,6 +762,14 @@ class LSNPController:
 						continue
 					_, message = parts
 					self.send_post(message)
+				elif cmd.startswith("like "):
+					parts = cmd.split(" ")
+					if len(parts) != 3:
+							lsnp_logger.info("Usage: like <post_timestamp_id> <owner_id>")
+							continue
+
+					_, post_timestamp_id, owner_id = parts
+					self.toggle_like(post_timestamp_id, owner_id)
 				elif cmd.startswith("ttl "):
 					parts = cmd.split(" ", 1)
 					if len(parts) < 2 or not parts[1].isdigit():
