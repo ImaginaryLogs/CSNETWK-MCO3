@@ -234,9 +234,10 @@ class LSNPController:
 			self._send_ack(message_id, addr)
    
 		elif msg_type == "POST":
-			from_id = kv.get("FROM", "")
+			from_id = kv.get("USER_ID", "")
 			content = kv.get("CONTENT", "")
 			message_id = kv.get("MESSAGE_ID", "")
+			timestamp = kv.get("TIMESTAMP", "")
 
 			# Optional: validate token if needed
 			token = kv.get("TOKEN", "")
@@ -244,10 +245,17 @@ class LSNPController:
 					if self.verbose:
 							lsnp_logger_v.info(f"[POST REJECTED] Invalid token from {from_id}")
 					return
+   
+			try:
+					parts = token.split("|")
+					expiry = int(parts[1])  # expiry time = timestamp + ttl
+					timestamp = expiry - state.ttl
+			except Exception:
+					timestamp = "unknown"
 
 			# Log or store the post
 			display_name = from_id.split('@')[0]
-			lsnp_logger.info(f"[POST RECEIVED] {display_name}: {content}")
+			lsnp_logger.info(f"[POST RECEIVED] {display_name} at {timestamp}: {content}")
 
 			# Send ACK back
 			self._send_ack(message_id, addr)
@@ -572,6 +580,8 @@ class LSNPController:
 				peer = self.peer_map[follower_id]
 				message_id = str(uuid.uuid4())
 				token = generate_token(self.full_user_id, "post")
+				expiry = int(token.split("|")[1])  # timestamp + ttl
+				timestamp = expiry - state.ttl
 
 				msg = make_post_message(
 						from_id=self.full_user_id,
@@ -580,7 +590,7 @@ class LSNPController:
 						message_id=message_id,
 						token=token
 				)
-
+    
 				# Create event for ACK
 				ack_event = threading.Event()
 				self.ack_events[message_id] = ack_event
