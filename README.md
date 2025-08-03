@@ -553,7 +553,7 @@ The main controller class that manages peer-to-peer networking, message handling
 
 ##### Core Methods
 
-1. > `__init__(user_id: str, display_name: str, port: int = LSNP_PORT, verbose: bool = True) -> None`
+1. > `__init__(user_id: str, display_name: str, port: int = LSNP_PORT, verbose: bool = True, avatar_path: str = None) -> None`
    >
    > Initializes the LSNP controller with user information and network configuration.
    >
@@ -563,6 +563,7 @@ The main controller class that manages peer-to-peer networking, message handling
    > - `display_name` - Human-readable display name
    > - `port` - UDP port for communication (default: LSNP_PORT)
    > - `verbose` - Enable detailed logging and debug output
+   > - `avatar_path` - Optional path to user avatar image for profile broadcasting
    >
    > **Behavior:** Sets up UDP socket, registers mDNS service, starts background threads, initializes IP tracker
 
