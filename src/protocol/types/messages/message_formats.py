@@ -34,3 +34,45 @@ def make_ping_message(user_id: str):
         "TYPE": "PING",
         "USER_ID": user_id
     })
+    
+
+def make_follow_message(from_id: str, to_id: str, message_id: str, token: str):
+    return format_kv_message({
+        "TYPE": "FOLLOW",
+        "MESSAGE_ID": message_id,
+        "FROM": from_id,
+        "TO": to_id,
+        "TIMESTAMP": int(time.time()),
+        "TOKEN": token
+    })
+
+def make_unfollow_message(from_id: str, to_id: str, message_id: str, token: str):
+    return format_kv_message({
+        "TYPE": "UNFOLLOW",
+        "MESSAGE_ID": message_id,
+        "FROM": from_id,
+        "TO": to_id,
+        "TIMESTAMP": int(time.time()),
+        "TOKEN": token
+    })
+
+def make_post_message(from_id: str, content: str, ttl: int, message_id: str, token: str):
+    return format_kv_message({
+        "TYPE": "POST",
+        "USER_ID": from_id,
+        "CONTENT": content,
+        "TTL": ttl,  
+        "MESSAGE_ID": message_id,
+        "TOKEN": token
+    })
+    
+def make_like_message(from_id: str, to_id: str, post_timestamp_id: str, action: str, timestamp: str, token: str):
+    return format_kv_message({
+        "TYPE": "LIKE",
+        "FROM": from_id,
+        "TO": to_id,
+        "POST_TIMESTAMP": post_timestamp_id,
+        "ACTION": action,
+        "TIMESTAMP": timestamp,
+        "TOKEN": token
+    })

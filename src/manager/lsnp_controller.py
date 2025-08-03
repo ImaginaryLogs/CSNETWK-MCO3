@@ -10,6 +10,7 @@ from src.config import *
 from src.protocol import *
 from src.utils import *
 from src.network import *
+import src.manager.state as state
 
 logger = logging.Logger()
 
@@ -31,7 +32,13 @@ class LSNPController:
 		self.full_user_id = f"{self.user_id}@{self.ip}"
 		self.peer_map: Dict[str, Peer] = {}
 		self.inbox: List[str] = []
+		self.following: set[str] = set()
+		self.followers: set[str] = set()
+		self.post_likes: set[str] = set()
 		self.ack_events: Dict[str, threading.Event] = {}
+		# self.follow = lambda user_id: post_controller.follow(self, user_id)
+		# self.unfollow = lambda user_id: post_controller.unfollow(self, user_id)
+		# self.send_post = lambda content: post_controller.send_post(self, content)
 
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1) # Enables broadcasting
@@ -164,7 +171,121 @@ class LSNPController:
 			lsnp_logger.info(f"{display_name}: {content}")
 			self.inbox.append(f"[{timestamp}] {display_name}: {content}")
 			self._send_ack(message_id, addr)
-		
+   
+		elif msg_type == "FOLLOW":
+			from_id = kv.get("FROM", "")
+			to_id = kv.get("TO", "")
+			token = kv.get("TOKEN", "")
+			message_id = kv.get("MESSAGE_ID", "")
+			display_name = from_id.split('@')[0] 
+	
+			# Validate
+			if to_id != self.full_user_id:
+				if self.verbose:
+						lsnp_logger_v.info(f"[FOLLOW IGNORED] Not for us: {to_id}")
+				return
+
+			if not validate_token(token, "follow"):
+					lsnp_logger.warning(f"[FOLLOW REJECTED] Invalid token from {from_id}")
+					return
+   
+			if from_id not in self.followers:
+					self.followers.add(from_id)
+			else:
+					if self.verbose:
+							lsnp_logger_v.info(f"[FOLLOW IGNORED] {from_id} already in followers")
+
+			# Determine display name
+			display_name = from_id.split('@')[0]
+			for peer in self.peer_map.values():
+					if peer.user_id == from_id:
+							display_name = peer.display_name
+							break
+
+			lsnp_logger.info(f" User {display_name} started following you.")
+			self._send_ack(message_id, addr)
+   
+		elif msg_type == "UNFOLLOW":
+			from_id = kv.get("FROM", "")
+			to_id = kv.get("TO", "")
+			token = kv.get("TOKEN", "")
+			message_id = kv.get("MESSAGE_ID", "")
+			display_name = from_id.split('@')[0]
+
+			if to_id != self.full_user_id:
+					lsnp_logger_v.info(f"[DEBUG] Received message type: {msg_type}")
+					if self.verbose:
+							lsnp_logger_v.info(f"[UNFOLLOW IGNORED] Not for us: {to_id}")
+					return
+
+			if not validate_token(token, "unfollow"):
+					lsnp_logger.warning(f"[UNFOLLOW REJECTED] Invalid token from {from_id}")
+					return
+   
+			if from_id in self.followers:
+						self.followers.remove(from_id)
+
+			display_name = from_id.split('@')[0]
+			for peer in self.peer_map.values():
+					if peer.user_id == from_id:
+							display_name = peer.display_name
+							break
+
+			lsnp_logger.info(f"User {display_name} unfollowed you.")
+			self._send_ack(message_id, addr)
+   
+		elif msg_type == "POST":
+			from_id = kv.get("USER_ID", "")
+			content = kv.get("CONTENT", "")
+			message_id = kv.get("MESSAGE_ID", "")
+			timestamp = kv.get("TIMESTAMP", "")
+
+			# Optional: validate token if needed
+			token = kv.get("TOKEN", "")
+			if not validate_token(token, "post"):
+					if self.verbose:
+							lsnp_logger_v.info(f"[POST REJECTED] Invalid token from {from_id}")
+					return
+   
+			try:
+					parts = token.split("|")
+					expiry = int(parts[1])  # expiry time = timestamp + ttl
+					timestamp = expiry - state.ttl
+			except Exception:
+					timestamp = "unknown"
+
+			# Log or store the post
+			display_name = from_id.split('@')[0]
+			lsnp_logger.info(f"[POST RECEIVED] {display_name} at {timestamp}: {content}")
+
+			# Send ACK back
+			self._send_ack(message_id, addr)
+   
+		elif msg_type == "LIKE":
+			from_id = kv.get("FROM", "")
+			to_id = kv.get("TO", "")
+			post_timestamp_id = kv.get("POST_TIMESTAMP", "")
+			token = kv.get("TOKEN", "")
+			timestamp = kv.get("TIMESTAMP", "")
+			action_type = kv.get("ACTION", "")
+
+			if to_id != self.full_user_id:
+					if self.verbose:
+							lsnp_logger_v.info(f"[{action_type} IGNORED] Not for us: {to_id}")
+					return
+
+			if not validate_token(token, msg_type.lower()):
+					lsnp_logger.warning(f"[{action_type} REJECTED] Invalid token from {from_id}")
+					return
+
+			display_name = from_id.split('@')[0]
+			if action_type == "LIKE":
+					lsnp_logger.info(f"[LIKE RECEIVED] {display_name} liked your post {post_timestamp_id}")
+			else:
+					lsnp_logger.info(f"[UNLIKE RECEIVED] {display_name} unliked your post {post_timestamp_id}")
+
+			self._send_ack(timestamp, addr)
+
 		elif msg_type == "ACK":
 			message_id = kv.get("MESSAGE_ID", "")
 			if message_id in self.ack_events:
@@ -270,8 +391,8 @@ class LSNPController:
 
 		lsnp_logger.error(f"[FAILED] DM to {peer.display_name} at {peer.ip}")
 		del self.ack_events[message_id]
-
-	def broadcast_profile(self):
+    	
+	def broadcast_profile(self):	
 		msg = make_profile_message(self.display_name, self.user_id, self.ip)
 		broadcast_count = 0
 	
@@ -348,6 +469,268 @@ class LSNPController:
 		for ip, count in stats['top_active_ips']:
 				user = self.ip_tracker.ip_to_user.get(ip, "Unknown")
 				lsnp_logger.info(f"  {ip} ({user}): {count} connections")
+    
+	def follow(self, user_id: str):
+		# Resolve user_id to full_user_id if needed
+		if "@" not in user_id:
+				full_user_id = None
+				for id in self.peer_map:
+						if id.startswith(f"{user_id}@"):
+								full_user_id = id
+								break
+				if not full_user_id:
+						lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
+						return
+				user_id = full_user_id
+
+		if user_id not in self.peer_map:
+				lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
+				return
+		elif user_id == self.full_user_id:
+				lsnp_logger.warning(f"[FOLLOW] Cannot follow yourself: {user_id}")
+				return
+		elif user_id in self.following:
+				lsnp_logger.warning(f"[FOLLOW] Already following {user_id}")
+				return
+
+		# ✅ Add to following (not followers)
+		self.following.add(user_id)
+		lsnp_logger.info(f"[FOLLOW] Now following {user_id}")
+
+		peer = self.peer_map[user_id]
+		message_id = str(uuid.uuid4())[:8]
+		token = generate_token(self.full_user_id, "follow")
+
+		msg = make_follow_message(
+				from_id=self.full_user_id,
+				to_id=user_id,
+				message_id=message_id,
+				token=token
+		)
+
+		# Inline ACK logic
+		ack_event = threading.Event()
+		self.ack_events[message_id] = ack_event
+
+		for attempt in range(RETRY_COUNT):
+				self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+				if self.verbose:
+						lsnp_logger_v.info(f"[FOLLOW SEND] Attempt {attempt + 1} to {peer.display_name} at {peer.ip}")
+
+				if ack_event.wait(RETRY_INTERVAL):
+						lsnp_logger.info(f"[FOLLOW SENT] to {peer.display_name} at {peer.ip}")
+						del self.ack_events[message_id]
+						return
+
+				if self.verbose:
+						lsnp_logger_v.info(f"[FOLLOW RETRY] {attempt + 1} for {peer.display_name} at {peer.ip}")
+
+		lsnp_logger.error(f"[FOLLOW FAILED] Could not send to {peer.display_name} at {peer.ip}")
+		del self.ack_events[message_id]
+
+
+
+	def unfollow(self, user_id: str):
+		if "@" not in user_id:
+				full_user_id = None
+				for id in self.peer_map:
+						if id.startswith(f"{user_id}@"):
+								full_user_id = id
+								break
+				if not full_user_id:
+						lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
+						return
+				user_id = full_user_id
+
+		if user_id not in self.peer_map:
+				lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
+				return
+		elif user_id == self.full_user_id:
+				lsnp_logger.warning(f"[UNFOLLOW] Cannot unfollow yourself: {user_id}")
+				return
+		elif user_id not in self.following:
+				lsnp_logger.warning(f"[UNFOLLOW] Not following {user_id}")
+				return
+
+		lsnp_logger.info(f"[UNFOLLOW] Now unfollowing {user_id}")
+		self.following.remove(user_id)
+
+		peer = self.peer_map[user_id]
+		message_id = str(uuid.uuid4())[:8]
+		token = generate_token(self.full_user_id, "unfollow")
+
+		msg = make_unfollow_message(
+				from_id=self.full_user_id,
+				to_id=user_id,
+				message_id=message_id,
+				token=token
+		)
+
+		# Inline ACK logic
+		ack_event = threading.Event()
+		self.ack_events[message_id] = ack_event
+
+		for attempt in range(RETRY_COUNT):
+				self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+				if self.verbose:
+						lsnp_logger_v.info(f"[UNFOLLOW SEND] Attempt {attempt + 1} to {peer.display_name} at {peer.ip}")
+
+				if ack_event.wait(RETRY_INTERVAL):
+						lsnp_logger.info(f"[UNFOLLOW SENT] to {peer.display_name} at {peer.ip}")
+						del self.ack_events[message_id]
+						return
+
+				if self.verbose:
+						lsnp_logger_v.info(f"[UNFOLLOW RETRY] {attempt + 1} for {peer.display_name} at {peer.ip}")
+
+		lsnp_logger.error(f"[UNFOLLOW FAILED] Could not send to {peer.display_name} at {peer.ip}")
+		del self.ack_events[message_id]
+
+	def send_post(self, content: str):
+		if not self.followers:
+				lsnp_logger.warning("[POST] No followers to send the post to.")
+				return
+
+		message_map = {}  # Map follower_id → message_id
+		ack_events = {}   # Map message_id → Event
+
+		# 1. Send to all followers first
+		for follower_id in self.followers:
+				if follower_id == self.full_user_id:
+						if self.verbose:
+								lsnp_logger_v.info("[POST] Skipping self")
+						continue
+				if follower_id not in self.peer_map:
+						lsnp_logger.warning(f"[POST] Skipped unknown follower: {follower_id}")
+						continue
+
+				peer = self.peer_map[follower_id]
+				message_id = str(uuid.uuid4())
+				token = generate_token(self.full_user_id, "post")
+				expiry = int(token.split("|")[1])  # timestamp + ttl
+				timestamp = expiry - state.ttl
+
+				msg = make_post_message(
+						from_id=self.full_user_id,
+						content=content,
+						ttl=state.ttl,
+						message_id=message_id,
+						token=token
+				)
+    
+				# Create event for ACK
+				ack_event = threading.Event()
+				self.ack_events[message_id] = ack_event
+				ack_events[message_id] = ack_event
+				message_map[follower_id] = message_id
+
+				# Initial send (Attempt 1)
+				try:
+						self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+						if self.verbose:
+								lsnp_logger_v.info(f"[POST SEND] Initial send to {peer.display_name} at {peer.ip}")
+				except Exception as e:
+						lsnp_logger.error(f"[POST ERROR] Failed to send to {peer.display_name}: {e}")
+
+		# 2. Retry logic for all pending ACKs in batch
+		for attempt in range(1, RETRY_COUNT):
+				pending = [fid for fid, mid in message_map.items() if not ack_events[mid].is_set()]
+				if not pending:
+						break  # All ACKed, stop early
+
+				if self.verbose:
+						lsnp_logger_v.info(f"[POST RETRY] Attempt {attempt + 1} for {len(pending)} followers")
+      
+				time.sleep(RETRY_INTERVAL)
+
+				# Resend to those who haven't ACKed
+				for follower_id in pending:
+						message_id = message_map[follower_id]
+      
+						if ack_events[message_id].is_set():
+							continue  # Already ACKed, skip
+					
+						peer = self.peer_map[follower_id]
+						msg = make_post_message(
+								from_id=self.full_user_id,
+								content=content,
+								ttl=state.ttl,
+								message_id=message_id,
+								token=generate_token(self.full_user_id, "post")  # regenerate token
+						)
+
+						try:
+								self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+								if self.verbose:
+										lsnp_logger_v.info(f"[POST RETRY] Resent to {peer.display_name} at {peer.ip}")
+						except Exception as e:
+								lsnp_logger.error(f"[POST ERROR] Retry failed for {peer.display_name}: {e}")
+
+				# Wait before next retry
+				time.sleep(RETRY_INTERVAL)
+
+		# 3. Report final result
+		sent_count = sum(1 for mid in message_map.values() if ack_events[mid].is_set())
+		lsnp_logger.info(f"[POST COMPLETE] Sent to {sent_count}/{len(self.followers)} followers")
+
+		# Cleanup ack_events
+		for mid in message_map.values():
+				if mid in self.ack_events:
+						del self.ack_events[mid]
+
+	def toggle_like(self, post_timestamp_id: str, owner_name: str):
+    # Resolve short name to full_user_id using peer_map
+		full_owner_id = None
+		for peer in self.peer_map.values():
+				if peer.display_name == owner_name or peer.user_id.startswith(f"{owner_name}@"):
+						full_owner_id = peer.user_id
+						break
+
+		if not full_owner_id:
+				lsnp_logger.error(f"[LIKE ERROR] Unknown post owner: {owner_name}")
+				return
+
+		peer = self.peer_map[full_owner_id]
+		timestamp = str(int(time.time()))
+
+		# Determine action (LIKE or UNLIKE)
+		action = "UNLIKE" if post_timestamp_id in self.post_likes else "LIKE"
+		token = generate_token(self.full_user_id, "like")
+
+		# Build LIKE message
+		msg = make_like_message(
+				from_id=self.full_user_id,
+				to_id=full_owner_id,
+				post_timestamp_id=post_timestamp_id,
+				action=action,
+				timestamp=timestamp,
+				token=token
+		)
+
+		# ACK handling
+		ack_event = threading.Event()
+		self.ack_events[timestamp] = ack_event
+
+		for attempt in range(RETRY_COUNT):
+				self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+				if self.verbose:
+						lsnp_logger_v.info(f"[{action} SEND] Attempt {attempt + 1} to {peer.display_name} at {peer.ip}")
+
+				if ack_event.wait(RETRY_INTERVAL):
+						if action == "LIKE":
+								self.post_likes.add(post_timestamp_id)
+								lsnp_logger.info(f"[LIKE CONFIRMED] Post {post_timestamp_id} by {peer.display_name}")
+						else:
+								self.post_likes.remove(post_timestamp_id)
+								lsnp_logger.info(f"[UNLIKE CONFIRMED] Post {post_timestamp_id} by {peer.display_name}")
+						del self.ack_events[timestamp]
+						return
+
+				if self.verbose:
+						lsnp_logger_v.info(f"[{action} RETRY] {attempt + 1} for {peer.display_name}")
+
+		lsnp_logger.error(f"[{action} FAILED] Could not send {action} to {peer.display_name}")
+		del self.ack_events[timestamp]
 
 	def run(self):
 		lsnp_logger.info(f"LSNP Peer started as {self.full_user_id}")
@@ -357,7 +740,7 @@ class LSNPController:
 			try:
 				cmd = lsnp_logger.input("", end="").strip()
 				if cmd == "help":
-					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  quit            - Exit"
+					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  post <content>  - Post for your followers\n  like <post_timestamp> <user_id> - Like a user's post\n  ttl <number>    - Set the TTL\n  follow <user>   - Follow a user\n  unfollow <user> - Unfollow a user\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  ipstats         - Display IP statistics\n  quit            - Exit"
 					lsnp_logger.info(help_str)
 				elif cmd == "peers":
 					self.list_peers()
@@ -370,6 +753,42 @@ class LSNPController:
 						continue
 					_, recipient_id, message = parts
 					self.send_dm(recipient_id, message)
+				elif cmd.startswith("post "):
+					parts = cmd.split(" ", 1)
+					if len(parts) < 2:
+						lsnp_logger.info("Usage: post <message>")
+						continue
+					_, message = parts
+					self.send_post(message)
+				elif cmd.startswith("like "):
+					parts = cmd.split(" ")
+					if len(parts) != 3:
+							lsnp_logger.info("Usage: like <post_timestamp_id> <owner_id>")
+							continue
+
+					_, post_timestamp_id, owner_id = parts
+					self.toggle_like(post_timestamp_id, owner_id)
+				elif cmd.startswith("ttl "):
+					parts = cmd.split(" ", 1)
+					if len(parts) < 2 or not parts[1].isdigit():
+							lsnp_logger.info("Usage: ttl <seconds>")
+							continue
+					state.TTL = int(parts[1])
+					lsnp_logger.info(f"[TTL] TTL updated to {state.TTL} seconds")
+				elif cmd.startswith("follow "):
+					parts = cmd.split(" ", 2)
+					if len(parts) < 2:
+						lsnp_logger.info("Usage: follow <user_id>")
+						continue
+					_, user_id = parts
+					self.follow(user_id)
+				elif cmd.startswith("unfollow "):
+					parts = cmd.split(" ", 2)
+					if len(parts) < 2:
+						lsnp_logger.info("Usage: unfollow <user_id>")
+						continue
+					_, user_id = parts
+					self.unfollow(user_id)
 				elif cmd == "broadcast":
 					self.broadcast_profile()
 				elif cmd == "ping":
@@ -390,7 +809,7 @@ class LSNPController:
 
 		self.zeroconf.close()
 		if cmd != "quit": print("") # For better looks
-  
+
 		stats = self.ip_tracker.get_ip_stats()
 		lsnp_logger.info(f"Session totals - IPs: {stats['total_known_ips']}, "
 									f"Connections: {stats['total_connection_attempts']}")	
