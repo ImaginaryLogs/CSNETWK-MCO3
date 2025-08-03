@@ -731,9 +731,6 @@ class LSNPController:
 		lsnp_logger.error(f"[{action} FAILED] Could not send {action} to {peer.display_name}")
 		del self.ack_events[timestamp]
 
-
-
-
 	def run(self):
 		lsnp_logger.info(f"LSNP Peer started as {self.full_user_id}")
 		lsnp_logger.info("Type 'help' for commands.")
@@ -742,7 +739,7 @@ class LSNPController:
 			try:
 				cmd = lsnp_logger.input("", end="").strip()
 				if cmd == "help":
-					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  post <content>  - Post for your followers\n  like <post_timestamp> <user_id> - Like a user's post\n  ttl <number>    - Set the TTL\n  follow <user>   - Follow a user\n  unfollow <user> - Unfollow a user\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  quit            - Exit"
+					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  post <content>  - Post for your followers\n  like <post_timestamp> <user_id> - Like a user's post\n  ttl <number>    - Set the TTL\n  follow <user>   - Follow a user\n  unfollow <user> - Unfollow a user\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  ipstats         - Display IP statistics\n  quit            - Exit"
 					lsnp_logger.info(help_str)
 				elif cmd == "peers":
 					self.list_peers()

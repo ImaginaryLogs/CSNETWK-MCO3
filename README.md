@@ -192,7 +192,7 @@ poetry run pytest
         - [mDNS Service Registration](#mdns-service-registration)
           - [Service Registration Process](#service-registration-process)
           - [Integration with LSNPController](#integration-with-lsnpcontroller)
-          
+
 ### Milestone 1
 
 #### Logging
@@ -426,7 +426,8 @@ A specialized service listener that handles mDNS service discovery events for pe
    > - `type` - Service type identifier
    > - `name` - Service name identifier
    >
-   > **Behavior:** 
+   > **Behavior:**
+   >
    > - Retrieves service information from mDNS broadcast
    > - Extracts user_id, display_name, IP address, and port from service properties
    > - Creates full_user_id in format "user_id@ip_address"
@@ -600,6 +601,60 @@ The main controller class that manages peer-to-peer networking, message handling
    >
    > **Output:** Total IPs, mapped users, connection attempts, blocked IPs, and most active addresses
 
+7. > `follow(user_id: str) -> None`
+   >
+   > Adds a peer to the following list and sends a FOLLOW message with acknowledgment and retry logic.
+   >
+   > Parameters:
+   > user_id – Identifier of the target peer (accepts short form "user" or full "user@ip").
+   >
+   > Behavior:
+   > Resolves short user_id to full format using peer_map.
+   > Validates that the peer exists and is not self.
+   > Adds peer to following set.
+   > Builds and sends a FOLLOW message to the peer with retry mechanism and acknowledgment handling.
+
+8. > `unfollow(user_id: str) -> None`
+   >
+   > Removes a peer from the following list and sends an UNFOLLOW message with acknowledgment and retry logic.
+   >
+   > Parameters:
+   > user_id – Identifier of the target peer (accepts short form "user" or full "user@ip").
+   >
+   > Behavior:
+   > Resolves short user_id to full format using peer_map.
+   > Validates that the peer exists, is not self, and is currently followed.
+   > Removes peer from following set.
+   > Builds and sends an UNFOLLOW message to the peer with retry mechanism and acknowledgment handling.
+
+9. > `send_post(content: str) -> None`
+   >
+   > Sends a post message to all followers with retry and acknowledgment tracking.
+   >
+   > Parameters:
+   > content – Text content of the post.
+   >
+   > Behavior:
+   > Checks if there are followers; exits if none.
+   > Creates a POST message for each follower with unique message_id and security token.
+   > Sends messages in batch, tracks acknowledgment events.
+   > Implements retry logic for unacknowledged peers with exponential backoff.
+   > Logs delivery status and cleans up acknowledgment data.
+
+   10.> toggle_like(post_timestamp_id: str, owner_name: str) -> None
+
+   > Toggles like status on a post (LIKE if not liked, UNLIKE if already liked) and sends an update to the post owner.
+   >
+   > Parameters:
+   > post_timestamp_id – Unique identifier of the post (timestamp-based).
+   > owner_name – Display name or short user ID of the post owner.
+   >
+   > Behavior:
+   > Resolves owner name to full user ID via peer_map.
+   > Determines current like state and selects action (LIKE or UNLIKE).
+   > Builds and sends a LIKE message to the owner with acknowledgment and retry logic.
+   > Updates local like state upon confirmation.
+
 ##### Message Handling
 
 ###### Key-Value Message Processing
@@ -637,6 +692,11 @@ The controller provides an interactive command-line interface:
 - `peers` - List discovered peers
 - `dms` - Show message inbox
 - `dm <user> <message>` - Send direct message
+- `post <content>` - Post for your followers
+- `like <post_timestamp> <user_id>` - Like a user's post
+- `ttl <number>` - Set the TTL
+- `follow <user>` - Follow a user
+- `unfollow <user>` - Unfollow a user
 - `broadcast` - Manual profile broadcast
 - `ping` - Send network ping
 - `verbose` - Toggle debug output
@@ -649,4 +709,3 @@ The controller provides an interactive command-line interface:
 - **Retry Mechanism** - Automatic retransmission for failed message delivery
 - **Connection Monitoring** - Tracks failed connection attempts and suspicious activity
 - **Graceful Degradation** - Continues operation despite individual peer failures
-
