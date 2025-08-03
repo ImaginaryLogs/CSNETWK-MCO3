@@ -34,3 +34,34 @@ def make_ping_message(user_id: str):
         "TYPE": "PING",
         "USER_ID": user_id
     })
+    
+
+def make_follow_message(from_id: str, to_id: str, message_id: str, token: str):
+    return format_kv_message({
+        "TYPE": "FOLLOW",
+        "MESSAGE_ID": message_id,
+        "FROM": from_id,
+        "TO": to_id,
+        "TIMESTAMP": int(time.time()),
+        "TOKEN": token
+    })
+
+def make_unfollow_message(from_id: str, to_id: str, message_id: str, token: str):
+    return format_kv_message({
+        "TYPE": "UNFOLLOW",
+        "MESSAGE_ID": message_id,
+        "FROM": from_id,
+        "TO": to_id,
+        "TIMESTAMP": int(time.time()),
+        "TOKEN": token
+    })
+
+def make_post_message(from_id: str, content: str, message_id: str, token: str):
+    return format_kv_message({
+        "TYPE": "POST",
+        "MESSAGE_ID": message_id,
+        "FROM": from_id,
+        "TIMESTAMP": int(time.time()),
+        "TOKEN": token,
+        "CONTENT": content
+    })
