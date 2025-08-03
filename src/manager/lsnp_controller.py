@@ -10,7 +10,7 @@ from src.config import *
 from src.protocol import *
 from src.utils import *
 from src.network import *
-from src.manager.follow_controller import * 
+from src.manager.post_controller import * 
 
 logger = logging.Logger()
 
