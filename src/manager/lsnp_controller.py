@@ -32,7 +32,8 @@ class LSNPController:
 		self.full_user_id = f"{self.user_id}@{self.ip}"
 		self.peer_map: Dict[str, Peer] = {}
 		self.inbox: List[str] = []
-		self.followers: List[str] = []
+		self.following: set[str] = set()
+		self.followers: set[str] = set()
 		self.ack_events: Dict[str, threading.Event] = {}
 		# self.follow = lambda user_id: post_controller.follow(self, user_id)
 		# self.unfollow = lambda user_id: post_controller.unfollow(self, user_id)
@@ -188,7 +189,10 @@ class LSNPController:
 					return
    
 			if from_id not in self.followers:
-						self.followers.append(from_id)
+					self.followers.add(from_id)
+			else:
+					if self.verbose:
+							lsnp_logger_v.info(f"[FOLLOW IGNORED] {from_id} already in followers")
 
 			# Determine display name
 			display_name = from_id.split('@')[0]
@@ -432,6 +436,7 @@ class LSNPController:
 				lsnp_logger.info(f"  {ip} ({user}): {count} connections")
     
 	def follow(self, user_id: str):
+		# Resolve user_id to full_user_id if needed
 		if "@" not in user_id:
 				full_user_id = None
 				for id in self.peer_map:
@@ -449,12 +454,13 @@ class LSNPController:
 		elif user_id == self.full_user_id:
 				lsnp_logger.warning(f"[FOLLOW] Cannot follow yourself: {user_id}")
 				return
-		elif user_id in self.followers:
+		elif user_id in self.following:
 				lsnp_logger.warning(f"[FOLLOW] Already following {user_id}")
 				return
 
+		# ✅ Add to following (not followers)
+		self.following.add(user_id)
 		lsnp_logger.info(f"[FOLLOW] Now following {user_id}")
-		self.followers.append(user_id)
 
 		peer = self.peer_map[user_id]
 		message_id = str(uuid.uuid4())[:8]
@@ -488,6 +494,7 @@ class LSNPController:
 		del self.ack_events[message_id]
 
 
+
 	def unfollow(self, user_id: str):
 		if "@" not in user_id:
 				full_user_id = None
@@ -506,12 +513,12 @@ class LSNPController:
 		elif user_id == self.full_user_id:
 				lsnp_logger.warning(f"[UNFOLLOW] Cannot unfollow yourself: {user_id}")
 				return
-		elif user_id not in self.followers:
+		elif user_id not in self.following:
 				lsnp_logger.warning(f"[UNFOLLOW] Not following {user_id}")
 				return
 
 		lsnp_logger.info(f"[UNFOLLOW] Now unfollowing {user_id}")
-		self.followers.remove(user_id)
+		self.following.remove(user_id)
 
 		peer = self.peer_map[user_id]
 		message_id = str(uuid.uuid4())[:8]
@@ -554,6 +561,10 @@ class LSNPController:
 
 		# 1. Send to all followers first
 		for follower_id in self.followers:
+				if follower_id == self.full_user_id:
+						if self.verbose:
+								lsnp_logger_v.info("[POST] Skipping self")
+						continue
 				if follower_id not in self.peer_map:
 						lsnp_logger.warning(f"[POST] Skipped unknown follower: {follower_id}")
 						continue
@@ -592,11 +603,17 @@ class LSNPController:
 
 				if self.verbose:
 						lsnp_logger_v.info(f"[POST RETRY] Attempt {attempt + 1} for {len(pending)} followers")
+      
+				time.sleep(RETRY_INTERVAL)
 
 				# Resend to those who haven't ACKed
 				for follower_id in pending:
-						peer = self.peer_map[follower_id]
 						message_id = message_map[follower_id]
+      
+						if ack_events[message_id].is_set():
+							continue  # Already ACKed, skip
+					
+						peer = self.peer_map[follower_id]
 						msg = make_post_message(
 								from_id=self.full_user_id,
 								content=content,
