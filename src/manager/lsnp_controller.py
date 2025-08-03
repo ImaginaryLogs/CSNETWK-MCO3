@@ -10,6 +10,7 @@ from src.config import *
 from src.protocol import *
 from src.utils import *
 from src.network import *
+import src.manager.state as state
 
 logger = logging.Logger()
 
@@ -564,6 +565,7 @@ class LSNPController:
 				msg = make_post_message(
 						from_id=self.full_user_id,
 						content=content,
+						ttl=state.ttl,
 						message_id=message_id,
 						token=token
 				)
@@ -598,6 +600,7 @@ class LSNPController:
 						msg = make_post_message(
 								from_id=self.full_user_id,
 								content=content,
+								ttl=state.ttl,
 								message_id=message_id,
 								token=generate_token(self.full_user_id, "post")  # regenerate token
 						)
@@ -632,7 +635,7 @@ class LSNPController:
 			try:
 				cmd = lsnp_logger.input("", end="").strip()
 				if cmd == "help":
-					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  post <content>  - Post for your followers\n  follow <user>   - Follow a user\n  unfollow <user> - Unfollow a user\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  quit            - Exit"
+					help_str = "\nCommands:\n  peers           - List discovered peers\n  dms             - Show inbox\n  dm <user> <msg> - Send direct message\n  post <content>  - Post for your followers\n  ttl <number>  - Set the TTL\n  follow <user>   - Follow a user\n  unfollow <user> - Unfollow a user\n  broadcast       - Send profile broadcast\n  ping            - Send ping\n  verbose         - Toggle verbose mode\n  quit            - Exit"
 					lsnp_logger.info(help_str)
 				elif cmd == "peers":
 					self.list_peers()
@@ -652,6 +655,13 @@ class LSNPController:
 						continue
 					_, message = parts
 					self.send_post(message)
+				elif cmd.startswith("ttl "):
+					parts = cmd.split(" ", 1)
+					if len(parts) < 2 or not parts[1].isdigit():
+							lsnp_logger.info("Usage: ttl <seconds>")
+							continue
+					state.TTL = int(parts[1])
+					lsnp_logger.info(f"[TTL] TTL updated to {state.TTL} seconds")
 				elif cmd.startswith("follow "):
 					parts = cmd.split(" ", 2)
 					if len(parts) < 2:

@@ -56,12 +56,12 @@ def make_unfollow_message(from_id: str, to_id: str, message_id: str, token: str)
         "TOKEN": token
     })
 
-def make_post_message(from_id: str, content: str, message_id: str, token: str):
+def make_post_message(from_id: str, content: str, ttl: int, message_id: str, token: str):
     return format_kv_message({
         "TYPE": "POST",
+        "USER_ID": from_id,
+        "CONTENT": content,
+        "TTL": ttl,  
         "MESSAGE_ID": message_id,
-        "FROM": from_id,
-        "TIMESTAMP": int(time.time()),
-        "TOKEN": token,
-        "CONTENT": content
+        "TOKEN": token
     })
