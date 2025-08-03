@@ -307,7 +307,7 @@ class LSNPController:
 						preview if preview else "[hidden]"
 				)
 
-		lsnp_logger.info(f"[DEBUG] PROFILE message to send:\n{safe_log_msg}")
+		# lsnp_logger.info(f"[DEBUG] PROFILE message to send:\n{safe_log_msg}")
         
 		# Broadcast to the subnet
 		broadcast_addr = self.ip.rsplit('.', 1)[0] + '.255'
