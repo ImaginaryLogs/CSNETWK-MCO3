@@ -26,8 +26,13 @@ class LSNPController:
 		
 		self.peer_map: Dict[str, Peer] = {}
 		self.inbox: List[str] = []
-		self.followers: List[str] = []
+		self.following: set[str] = set()
+		self.followers: set[str] = set()
+		self.post_likes: set[str] = set()
 		self.ack_events: Dict[str, threading.Event] = {}
+		# self.follow = lambda user_id: post_controller.follow(self, user_id)
+		# self.unfollow = lambda user_id: post_controller.unfollow(self, user_id)
+		# self.send_post = lambda content: post_controller.send_post(self, content)
 
 
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
