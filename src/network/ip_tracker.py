@@ -16,19 +16,34 @@ logger = Logger()
 
 IP_ADDRESS_TOP_K_LIMIT = 5
 IP_LOGGER_CODE_NAME = 'IPTRAKR'
+IP_LOGGER_NAME = f'[cyan][{IP_LOGGER_CODE_NAME}][/]'
 
-ip_logger = logger.get_logger(f'[cyan][{IP_LOGGER_CODE_NAME}][/]')
+ip_logger = logger.get_logger('[cyan]iptk[/]')
 
 class IPAddressTracker:
   """
-  Logs IP Information, the data flowing between them, and gives statistics about it.
+  Gets IP, and Logs IP Information, the data flowing between them, and gives statistics about it.
   """
+  
+  
   def __init__(self) -> None:
     self.known_ips: Set[str] = set()
     self.ip_to_user: Dict[str, str] = {}
     self.connection_attempts: Dict[str, int] = {}
     self.blocked_ips: Set[str] = set()
     
+  def get_own_ip(self):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+      s.connect(("8.8.8.8", 80))
+      return s.getsockname()[0]
+    except:
+      return "127.0.0.1"
+    finally:
+      s.close()
+  
+  
+  
   def log_new_ip(self, ip: str, user_id: str = '', context: str = "discovery") -> None:
     """Log when a new IP address is encountered"""
     if ip in self.known_ips:

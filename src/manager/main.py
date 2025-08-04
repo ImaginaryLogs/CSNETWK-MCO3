@@ -5,11 +5,9 @@ from src.manager import *
 
 logger = Logger()
 
-STARTER_CODENAME='STARTER'
+STARTER_CODENAME='client'
 
-server_logger = logger.get_logger(f'[{STARTER_CODENAME}]')
-verbose_logger = logger.get_logger(f'[{STARTER_CODENAME}] |:', False)
-
+server_logger = logger.get_logger(f'{STARTER_CODENAME}')
 def main():
   server_logger.info("Hello World!")
   parser = argparse.ArgumentParser()
@@ -23,6 +21,5 @@ def main():
   peer.run()
   pass
 
-if __name__ == "__main__":
-  
+if __name__ == "__main__":  
   main()

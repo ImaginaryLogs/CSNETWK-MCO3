@@ -8,88 +8,7 @@ from rich.text import Text
 from datetime import timedelta
 import json
 import os
-
-LOG_TIMECHECK_MINUTES = 5
-LOG_DEBUG = False
-LOGGER_CODENAME = 'LOGGER '
-LOGGER_PREFIX = f"[blue][{LOGGER_CODENAME}][/]"
-LOG_FILENAME = "logger.log"
-
-console = Console()
-
-class LogLevel(Enum):
-  """
-  Enum for different log levels.
-  """
-  INPUT =      "[blue][<<<<<][/]"
-  DEBUG =      "[blue][     ][/]"
-  INFO =      "[green][  -  ][/]"
-  WARNING =  "[yellow][ /!\\ ][/]"
-  ERROR =    "[red][ !!! ][/]"
-  CRITICAL =    "[magenta][!!!!!][/]"
-  
-@dataclass
-class LogEntry:
-  """
-  A data class that stores related useful logging data
-  """ 
-  timestamp: datetime;
-  level: LogLevel;
-  prefix: str;
-  message: str;
-  
-  def __str__(self) -> str:
-    """Generates a string from data
-
-    Returns:
-        str: formatted string
-    """
-    strTime = self.timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3];
-    return f"[black][{strTime}][/] {self.prefix} {self.level.value} {self.message}";
-  
-  def to_dict(self) -> dict:
-    """_summary_
-
-    Args:
-        str (_type_): _description_
-
-    Raises:
-        RuntimeError: _description_
-
-    Returns:
-        dict: _description_
-    """
-    return {
-      'timestamp': self.timestamp.isoformat(),
-      'level': self.level.name,
-      'prefix': self.prefix,
-      'message': self.message
-    }
-    
-  @classmethod
-  def from_dict(cls, data: dict) -> 'LogEntry':
-    """Create LogEntry from dictionary.
-
-    Args:
-        data (dict): dictionary containing valid LogEntry Values
-
-    Returns:
-        LogEntry: LogEntry class created from the dict
-    """
-    return cls(
-      timestamp=datetime.fromisoformat(data['timestamp']),
-      level=LogLevel[data['level']],
-      prefix=data['prefix'],
-      message=data['message']
-    )
-    
-create_logger_entry: Callable[[LogLevel, str], 'LogEntry'] = lambda level, msg: LogEntry(datetime.now(), level, LOGGER_PREFIX, msg)
-
-create_logger_info_entry:  Callable[[str], 'LogEntry'] = lambda msg : create_logger_entry(LogLevel.INFO, msg)
-
-create_logger_error_entry: Callable[[str], 'LogEntry'] = lambda msg : create_logger_entry(LogLevel.ERROR, msg)
-
-create_logger_debug_entry: Callable[[str], 'LogEntry'] = lambda msg : create_logger_entry(LogLevel.DEBUG, msg)
+from .log_data import *
 
 def _debug_logger(msg: str):
   if LOG_DEBUG: console.print(f'{create_logger_debug_entry(msg)}')
@@ -130,6 +49,12 @@ class Logger:
     self._logs_lock = threading.Lock()                    # Only the Logger Class can create logs, locked
     self._instances_lock = threading.Lock()               # Only the Logger Class can create more local instances, locked
     
+    # Buffer-related attributes
+    self._console_buffer: List[BufferedLogEntry] = []
+    self._console_locked = False
+    self._buffer_lock_time: Optional[datetime] = None
+    self._buffer_lock = threading.Lock()
+    
     self._max_logs = max_logs
     self._archive_after_minutes = archive_after_minutes
     
@@ -151,6 +76,85 @@ class Logger:
     with self._logs_lock:                                 #  While Logs Lock is open
       self._logs.append(entry)                            #  Append the log
       self._check_and_archive()
+  
+  def _should_flush_buffer(self) -> bool:
+    """Check if buffer should be flushed based on time or message count."""
+    if not self._console_locked:
+      return False
+    
+    # Check message count
+    if len(self._console_buffer) >= BUFFER_MAX_MESSAGES:
+      return True
+    
+    # Check time limit
+    if self._buffer_lock_time is not None:
+      time_elapsed = datetime.now() - self._buffer_lock_time
+      if time_elapsed >= timedelta(minutes=BUFFER_TIME_LIMIT_MINUTES):
+        return True
+    
+    return False
+  
+  def _flush_console_buffer(self) -> None:
+    """Flush all buffered console messages and unlock console output."""
+    with self._buffer_lock:
+      if not self._console_buffer:
+        console.print("None to show.")
+        return
+      
+      # # Print buffer header
+      # if self._console_locked:
+      #   console.print(f"[yellow]--- Flushing {len(self._console_buffer)} buffered messages ---[/]")
+      
+      # Print all buffered messages
+      for buffered_entry in self._console_buffer:
+        if buffered_entry.console_enabled:
+          console.print(str(buffered_entry.entry), end=buffered_entry.end)
+      
+      # # Print buffer footer
+      # if self._console_locked:
+      #   console.print(f"[yellow]--- End of buffered messages ---[/]")
+      
+      # Clear buffer and unlock
+      self._console_buffer.clear()
+      self._console_locked = False
+      self._buffer_lock_time = None
+  
+  def _add_to_buffer(self, entry: LogEntry, console_enabled: bool, end: str = "\n") -> None:
+    """Add a log entry to the console buffer."""
+    with self._buffer_lock:
+      buffered_entry = BufferedLogEntry(entry, console_enabled, end)
+      self._console_buffer.append(buffered_entry)
+      
+      # Check if we should flush the buffer
+      if self._should_flush_buffer():
+        console.print("auto-flush")
+        self._flush_console_buffer()
+  
+  def _lock_console_for_input(self) -> None:
+    """Lock console output and start buffering messages."""
+    with self._buffer_lock:
+      if not self._console_locked:
+        self._console_locked = True
+        self._buffer_lock_time = datetime.now()
+        # console.print(f"[cyan]--- Console output locked for input. Buffering messages... ---[/]")
+        
+  def _unlock_console_for_input(self) -> None:
+    """Lock console output and start buffering messages."""
+    with self._buffer_lock:
+      if self._console_locked:
+        self._console_locked = False
+        self._buffer_lock_time = datetime.now()
+        # console.print(f"[cyan]--- Console output locked for input. Buffering messages... ---[/]")
+  
+  def _handle_console_output(self, entry: LogEntry, console_enabled: bool, end: str = "\n") -> None:
+    """Handle console output - either print directly or add to buffer."""
+    if self._console_locked:
+      # Add to buffer if console is locked
+      self._add_to_buffer(entry, console_enabled, end)
+    else:
+      # Print directly if console is not locked
+      if console_enabled:
+        console.print(str(entry), end=end)
   
   def get_logger(self, prefix: str, console_enabled: bool = True):
     """
@@ -215,6 +219,26 @@ class Logger:
     """Get logs as formatted strings."""
     logs = self.get_logs(**kwargs)
     return [str(log) for log in logs]
+  
+  def get_buffer_stats(self) -> Dict[str, Any]:
+    """Get statistics about the current buffer state."""
+    with self._buffer_lock:
+      time_locked = None
+      if self._buffer_lock_time:
+        time_locked = (datetime.now() - self._buffer_lock_time).total_seconds()
+      
+      return {
+        'console_locked': self._console_locked,
+        'buffered_messages': len(self._console_buffer),
+        'buffer_max_messages': BUFFER_MAX_MESSAGES,
+        'buffer_time_limit_minutes': BUFFER_TIME_LIMIT_MINUTES,
+        'seconds_locked': time_locked,
+        'should_flush': self._should_flush_buffer()
+      }
+  
+  def manual_flush_buffer(self) -> None:
+    """Manually flush the console buffer."""
+    self._flush_console_buffer()
   
   def _check_and_archive(self) -> None:
     """Check if archiving is needed based on log count or time limits."""
@@ -291,8 +315,8 @@ class Logger:
       # Directly append without triggering archive check
       self._logs.append(archive_log)
       
-      if console:
-        console.print(str(archive_log))
+      # Handle console output through the buffering system
+      self._handle_console_output(archive_log, True)
         
     except Exception as e:
       error_log = create_logger_error_entry(f"Failed to archive logs: {str(e)}")
@@ -300,8 +324,8 @@ class Logger:
       # Directly append without triggering archive check
       self._logs.append(error_log)
       
-      if console:
-        console.print(str(error_log))
+      # Handle console output through the buffering system
+      self._handle_console_output(error_log, True)
   
   def manual_archive(self) -> None:
     """Manually trigger log archiving."""
@@ -340,7 +364,7 @@ class LoggerInstance:
   def __init__(self, prefix: str, console_enabled: bool = True):
     self.prefix = prefix
     self.console_enabled = console_enabled
-    self._parent_logger = None
+    self._parent_logger: Logger | None = None
 
   def _set_parent(self, parent_logger: 'Logger') -> None:
     """Set reference to parent singleton logger."""
@@ -364,11 +388,17 @@ class LoggerInstance:
     """Internal method to handle logging."""
     entry = self._store(level, message, end)
     
-    if self.console_enabled: 
-      console.print(str(entry), end=end)
+    # Use the parent logger's console handling system
+    if self._parent_logger is not None:
+      self._parent_logger._handle_console_output(entry, self.console_enabled, end)
+  
   
   def input(self, message: str, end: str = "\n") -> str:
-      """Logs an Input"""
+      """Logs an Input and locks console output for buffering."""
+      
+      # Lock console output for buffering
+      if self._parent_logger is not None:
+        self._parent_logger._lock_console_for_input()
       
       if self.console_enabled: 
         print_entry = LogEntry(datetime.now(), LogLevel.INPUT, self.prefix, message)
@@ -376,7 +406,12 @@ class LoggerInstance:
       
       received_input = input(message)
       
+      if self._parent_logger is not None:
+        self._parent_logger._unlock_console_for_input() 
+      # Store the input log entry
       self._store(LogLevel.INPUT, ' '.join([message, received_input]))
+    
+      
       
       return received_input
   
@@ -407,7 +442,3 @@ class LoggerInstance:
   def set_prefix(self, prefix: str) -> None:
       """Change the prefix for this instance."""
       self.prefix = prefix
-  
-  
-  
-  
