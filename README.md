@@ -536,7 +536,7 @@ The main controller class that manages peer-to-peer networking, message handling
 - **mDNS Integration** - Automatic peer discovery and service registration
 - **Message Processing** - Handles both key-value and legacy JSON message formats
 - **Direct Messaging** - Reliable message delivery with acknowledgment and retry mechanisms
-- **Profile Broadcasting** - Periodic and manual profile announcements to peers
+- **Ping and Profile Broadcasting** - Periodic and manual profile announcements to peers
 - **IP Address Tracking** - Comprehensive network monitoring and statistics
 - **Peer Management** - Maintains active peer connections and availability
 
@@ -682,7 +682,7 @@ Maintains backward compatibility with JSON message format for transition period.
 
 - **Message Listener** - Dedicated thread for incoming message processing
 - **mDNS Browser** - Background service discovery monitoring
-- **Periodic Broadcasting** - Scheduled profile announcements every 5 minutes
+- **Periodic Broadcasting** - Scheduled profile and ping announcements every 5 minutes
 
 ##### Command Interface
 
@@ -709,3 +709,365 @@ The controller provides an interactive command-line interface:
 - **Retry Mechanism** - Automatic retransmission for failed message delivery
 - **Connection Monitoring** - Tracks failed connection attempts and suspicious activity
 - **Graceful Degradation** - Continues operation despite individual peer failures
+
+
+# File Transfer System
+
+The LSNP file transfer system provides reliable peer-to-peer file sharing capabilities with chunked transmission, acknowledgment handling, and progress tracking. The system handles files of any size by breaking them into manageable chunks and reassembling them on the recipient side.
+
+## Key Features for File Transfer
+
+- **Chunked File Transmission** - Large files are automatically split into manageable chunks (1KB default)
+- **Offer-Accept Model** - Recipients must explicitly accept file transfers before transmission begins
+- **Progress Tracking** - Real-time monitoring of file transfer progress for both sender and receiver
+- **Automatic Reassembly** - Received chunks are automatically reassembled into complete files
+- **Token Validation** - All file transfer messages use cryptographic tokens for security
+- **File Metadata** - Includes filename, size, type, and optional description
+- **Error Recovery** - Handles missing chunks and network interruptions gracefully
+- **Local Storage** - Downloaded files are saved in user-specific directories
+
+## Core Classes
+
+### FileTransfer
+
+Manages individual file transfer sessions with complete state tracking.
+
+#### Data Structure
+```python
+class FileTransfer:
+    file_id: str              # Unique identifier for this transfer
+    filename: str             # Original filename
+    filesize: int             # Total file size in bytes
+    filetype: str             # MIME type of the file
+    total_chunks: int         # Number of chunks needed for complete file
+    sender_id: str            # Full user ID of the sender
+    description: str          # Optional file description
+    chunks: Dict[int, bytes]  # Received chunk data indexed by chunk number
+    received_chunks: int      # Count of successfully received chunks
+    accepted: bool            # Whether recipient has accepted the transfer
+    completed: bool           # Whether all chunks have been received
+    timestamp: int            # Transfer initiation timestamp
+```
+
+#### Key Methods
+
+1. > `__init__(file_id: str, filename: str, filesize: int, filetype: str, total_chunks: int, sender_id: str, description: str = "") -> None`
+   >
+   > Initializes a new file transfer session with metadata.
+   >
+   > **Parameters:**
+   >
+   > - `file_id` - Unique UUID for this transfer session
+   > - `filename` - Name of the file being transferred
+   > - `filesize` - Total size of the file in bytes
+   > - `filetype` - MIME type (e.g., "text/plain", "image/jpeg")
+   > - `total_chunks` - Number of chunks needed for complete transmission
+   > - `sender_id` - Full user ID of the sender (format: "user@ip")
+   > - `description` - Optional description of the file contents
+
+2. > `add_chunk(chunk_index: int, data: bytes) -> bool`
+   >
+   > Adds a received chunk to the transfer session.
+   >
+   > **Parameters:**
+   >
+   > - `chunk_index` - Sequential index of the chunk (0-based)
+   > - `data` - Raw bytes of the chunk data
+   >
+   > **Returns:** True if chunk was successfully added, False if transfer not accepted
+   >
+   > **Behavior:** Validates acceptance status, prevents duplicate chunks, tracks completion status
+
+3. > `get_assembled_data() -> Optional[bytes]`
+   >
+   > Assembles all received chunks into complete file data.
+   >
+   > **Returns:** Complete file data as bytes, or None if transfer incomplete
+   >
+   > **Behavior:** Validates all chunks present, assembles in correct order, returns complete file
+
+## File Transfer Protocol Messages
+
+### FILE_OFFER Message
+
+Initiates a file transfer by offering a file to a recipient.
+
+**Format:**
+```
+TYPE: FILE_OFFER
+FROM: sender_user_id@ip
+TO: recipient_user_id@ip
+FILENAME: example.txt
+FILESIZE: 1024
+FILETYPE: text/plain
+FILEID: uuid-string
+DESCRIPTION: Optional description
+TIMESTAMP: unix_timestamp
+TOKEN: cryptographic_token
+```
+
+### FILE_ACCEPT/FILE_REJECT Messages
+
+Recipient's response to a file offer.
+
+**Format:**
+```
+TYPE: FILE_ACCEPT  # or FILE_REJECT
+FROM: recipient_user_id@ip
+TO: sender_user_id@ip
+FILEID: uuid-string
+TOKEN: cryptographic_token
+TIMESTAMP: unix_timestamp
+```
+
+### FILE_CHUNK Message
+
+Contains individual file chunks during transmission.
+
+**Format:**
+```
+TYPE: FILE_CHUNK
+FROM: sender_user_id@ip
+TO: recipient_user_id@ip
+FILEID: uuid-string
+CHUNK_INDEX: 0
+TOTAL_CHUNKS: 10
+CHUNK_SIZE: 1024
+TOKEN: cryptographic_token
+DATA: base64_encoded_chunk_data
+```
+
+### FILE_RECEIVED Message
+
+Confirmation that file transfer has completed successfully.
+
+**Format:**
+```
+TYPE: FILE_RECEIVED
+FROM: recipient_user_id@ip
+TO: sender_user_id@ip
+FILEID: uuid-string
+STATUS: COMPLETE
+TIMESTAMP: unix_timestamp
+```
+
+## LSNPController File Transfer Methods
+
+### Sending Files
+
+1. > `send_file(recipient_id: str, file_path: str, description: str = "") -> None`
+   >
+   > Initiates file transfer to a specified peer.
+   >
+   > **Parameters:**
+   >
+   > - `recipient_id` - Target peer (accepts "user" or "user@ip" format)
+   > - `file_path` - Path to file (absolute or relative to project root)
+   > - `description` - Optional description of the file
+   >
+   > **File Path Resolution:**
+   > - Absolute paths used directly
+   > - Relative paths first checked in `/files/` directory
+   > - Falls back to project root if not found in `/files/`
+   >
+   > **Process Flow:**
+   > 1. Validates recipient exists in peer map
+   > 2. Resolves and validates file path
+   > 3. Generates unique file ID and metadata
+   > 4. Sends FILE_OFFER message with file details
+   > 5. Waits for recipient acceptance (60-second timeout)
+   > 6. If accepted, transmits file in chunks with small delays
+   > 7. Logs completion status and cleans up resources
+
+2. > `_get_file_type(filename: str) -> str`
+   >
+   > Determines MIME type based on file extension.
+   >
+   > **Supported Types:**
+   > - `.txt` → `text/plain`
+   > - `.jpg/.jpeg` → `image/jpeg`
+   > - `.png` → `image/png`
+   > - `.gif` → `image/gif`
+   > - `.pdf` → `application/pdf`
+   > - `.mp3` → `audio/mpeg`
+   > - `.mp4` → `video/mp4`
+   > - `.zip` → `application/zip`
+   > - Default → `application/octet-stream`
+
+### Receiving Files
+
+1. > `accept_file(file_id: str) -> None`
+   >
+   > Accepts a pending file offer and begins receiving chunks.
+   >
+   > **Parameters:**
+   >
+   > - `file_id` - Unique identifier of the file offer to accept
+   >
+   > **Behavior:**
+   > - Validates file offer exists in pending offers
+   > - Moves transfer from pending to active transfers
+   > - Sends FILE_ACCEPT message to sender
+   > - Prepares to receive file chunks
+
+2. > `reject_file(file_id: str) -> None`
+   >
+   > Rejects a pending file offer.
+   >
+   > **Parameters:**
+   >
+   > - `file_id` - Unique identifier of the file offer to reject
+   >
+   > **Behavior:**
+   > - Validates file offer exists
+   > - Sends FILE_REJECT message to sender
+   > - Removes offer from pending list
+
+3. > `list_pending_files() -> None`
+   >
+   > Displays all pending file offers awaiting user response.
+   >
+   > **Output:** Shows filename, size, sender, file ID, and description for each pending offer
+
+4. > `list_active_transfers() -> None`
+   >
+   > Displays progress of ongoing file transfers.
+   >
+   > **Output:** Shows filename, sender, and chunk progress (received/total) for active transfers
+
+### File Storage and Organization
+
+#### Directory Structure
+
+Files are automatically organized in user-specific directories:
+
+```
+project_root/
+└── lsnp_data/
+    └── user_id@ip_address/
+        └── downloads/
+            ├── received_file1.txt
+            ├── received_file2.jpg
+            └── ...
+```
+
+#### File Path Resolution for Sending
+
+1. **Absolute Paths** - Used directly if file exists
+2. **Files Directory** - Checks `project_root/files/filename` first
+3. **Project Root** - Falls back to `project_root/filename`
+4. **Error Handling** - Provides helpful hints about file placement
+
+## Message Handling Implementation
+
+### File Offer Processing
+
+1. > `_handle_file_offer(kv: dict, addr: Tuple[str, int]) -> None`
+   >
+   > Processes incoming FILE_OFFER messages.
+   >
+   > **Validation Steps:**
+   > - Verifies message is addressed to this peer
+   > - Validates cryptographic token
+   > - Extracts file metadata (name, size, type, ID, description)
+   >
+   > **Behavior:**
+   > - Calculates required chunk count
+   > - Creates FileTransfer object in pending offers
+   > - Displays offer notification to user
+   > - Waits for user acceptance/rejection
+
+### Chunk Reception
+
+2. > `_handle_file_chunk(kv: dict, addr: Tuple[str, int]) -> None`
+   >
+   > Processes incoming FILE_CHUNK messages during active transfers.
+   >
+   > **Validation:**
+   > - Verifies message addressing and token
+   > - Confirms active transfer exists for file ID
+   >
+   > **Process:**
+   > - Decodes base64 chunk data
+   > - Adds chunk to transfer object
+   > - Updates progress tracking
+   > - Triggers completion when all chunks received
+
+### Transfer Completion
+
+3. > `_complete_file_transfer(transfer: FileTransfer, sender_addr: Tuple[str, int]) -> None`
+   >
+   > Handles completion of file transfers and saves files to disk.
+   >
+   > **Process:**
+   > - Assembles all chunks into complete file data
+   > - Creates user-specific download directory
+   > - Saves file with original filename
+   > - Sends FILE_RECEIVED confirmation
+   > - Cleans up transfer resources
+   > - Logs completion and file location
+
+### Response Handling
+
+4. > `_send_file_response(recipient_id: str, file_id: str, response_type: str) -> None`
+   >
+   > Sends FILE_ACCEPT or FILE_REJECT responses to file offers.
+   >
+   > **Security:** Generates fresh token for response message
+   > **Reliability:** Includes error handling for network failures
+
+## Configuration Constants
+
+- `MAX_CHUNK_SIZE = 1024` - Maximum size of individual file chunks in bytes
+- File transfer timeout: 60 seconds for recipient response
+- Chunk transmission delay: 0.1 seconds between chunks to prevent network congestion
+
+## Command Line Interface
+
+### File Transfer Commands
+
+- `sendfile <user> <filepath> [description]` - Initiate file transfer
+- `acceptfile <fileid>` - Accept pending file offer
+- `rejectfile <fileid>` - Reject pending file offer
+- `pendingfiles` - List files awaiting acceptance
+- `transfers` - Show active transfer progress
+
+### Usage Examples
+
+```bash
+# Send a file from the files directory
+sendfile alice document.pdf "Project report for review"
+
+# Send with absolute path
+sendfile bob /home/user/photo.jpg "Vacation photos"
+
+# List pending offers and accept one
+pendingfiles
+acceptfile a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+# Check transfer progress
+transfers
+```
+
+## Error Handling and Recovery
+
+### Network Resilience
+
+- **Token Validation** - Prevents unauthorized file access and replay attacks
+- **Chunk Verification** - Validates chunk integrity and prevents duplicates
+- **Timeout Handling** - Graceful handling of unresponsive peers
+- **Resource Cleanup** - Automatic cleanup of failed or completed transfers
+
+### User Experience
+
+- **Progress Feedback** - Real-time updates on transfer status
+- **Clear Error Messages** - Helpful error reporting with suggestions
+- **File Location Hints** - Guidance on where to place files for sending
+- **Completion Notifications** - Clear indication of successful transfers
+
+### Security Features
+
+- **Cryptographic Tokens** - All file transfer messages include security tokens
+- **User Consent** - Recipients must explicitly accept before receiving files
+- **Path Validation** - Prevents directory traversal attacks
+- **Size Limits** - Configurable limits on file and chunk sizes
