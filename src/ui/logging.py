@@ -45,7 +45,7 @@ class LogEntry:
         str: formatted string
     """
     strTime = self.timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3];
-    return f"[black][{strTime}][/] {self.prefix} {self.level.value} {self.message}";
+    return f"{self.prefix} {self.level.value} {self.message}";
   
   def to_dict(self) -> dict:
     """_summary_

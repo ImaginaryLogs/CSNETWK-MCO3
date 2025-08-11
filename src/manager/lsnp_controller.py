@@ -24,8 +24,7 @@ logger = logging.Logger()
 LSNP_CODENAME = 'LSNPCON'
 LSNP_PREFIX = f'[green][{LSNP_CODENAME}][/]'
 
-lsnp_logger = logger.get_logger(LSNP_PREFIX)
-lsnp_logger = logger.get_logger(f'{LSNP_PREFIX} |:')
+
 
 LSNP_BROADCAST_PERIOD_SECONDS = 300
 MAX_CHUNK_SIZE = 1024  # Maximum chunk size in bytes
@@ -115,11 +114,12 @@ class LSNPController:
       self._start_threads()
       
       self.tictactoe_games = {}  
-      self.gamemanager = GameManager(lsnp_logger)
+      self.lsnp_logger = logger.get_logger(user_id)
+      self.gamemanager = GameManager(self.lsnp_logger)
       self.ip_tracker = IPAddressTracker()
 
       if self.verbose:
-          lsnp_logger.info(f"[INIT] Peer initialized: {self.full_user_id}")
+          self.lsnp_logger.info(f"[INIT] Peer initialized: {self.full_user_id}")
 
 
     def _get_project_root(self):
@@ -164,14 +164,14 @@ class LSNPController:
       )
       self.zeroconf.register_service(info)
       if self.verbose:
-        lsnp_logger.info(f"[mDNS] Registered: {info.name}")
+        self.lsnp_logger.info(f"[mDNS] Registered: {info.name}")
 
     def _start_threads(self):
       threading.Thread(target=self._listen, daemon=True).start()
       listener = PeerListener(self.peer_map, self._on_peer_discovered)
       ServiceBrowser(self.zeroconf, MDNS_SERVICE_TYPE, listener)
       if self.verbose:
-        lsnp_logger.info("[mDNS] Discovery started")
+        self.lsnp_logger.info("[mDNS] Discovery started")
 
     def _listen(self):
         while True:
@@ -185,7 +185,7 @@ class LSNPController:
                 raw = data.decode()
                 data_size = len(data)
                 if self.verbose:
-                  lsnp_logger.info(f"[RECV] From {addr}: \n{raw[:100]}{'...' if len(raw) > 100 else ''}")
+                  self.lsnp_logger.info(f"[RECV] From {addr}: \n{raw[:100]}{'...' if len(raw) > 100 else ''}")
                 
                 # All messages should be in key-value format now
                 if "TYPE: " in raw:
@@ -199,13 +199,13 @@ class LSNPController:
                     self.ip_tracker.log_message_flow(sender_ip, self.ip, msg.get("type", "JSON"), data_size)
             except Exception as e:
                 if self.verbose:
-                    lsnp_logger.info(f"[ERROR] Malformed message from {addr}: {e}")
+                    self.lsnp_logger.info(f"[ERROR] Malformed message from {addr}: {e}")
 
     def _failed_security_check(self, from_id: str, sender_ip: str) -> bool:
         if from_id and "@" in from_id:
             from_ip = from_id.split("@")[-1]
             if from_ip != sender_ip:
-                lsnp_logger.warning(f"[SECURITY] FROM field IP {from_ip} does not match sender IP {sender_ip}. Dropping message.")
+                self.lsnp_logger.warning(f"[SECURITY] FROM field IP {from_ip} does not match sender IP {sender_ip}. Dropping message.")
                 return True
             return False
         return True
@@ -237,7 +237,7 @@ class LSNPController:
                 self.peer_map[from_id].avatar_type = avatar_type
 
             if self.verbose:
-                lsnp_logger.info(f"[PROFILE] {display_name} ({from_id}) joined from {ip}")
+                self.lsnp_logger.info(f"[PROFILE] {display_name} ({from_id}) joined from {ip}")
                 
         elif msg_type == "DM":
             from_id = kv.get("FROM", "")
@@ -250,15 +250,15 @@ class LSNPController:
 
             # Verify this message is for us
             if self.verbose:
-                lsnp_logger.info(f"[DM] Received from ${from_id} to ${to_id}")
+                self.lsnp_logger.info(f"[DM] Received from ${from_id} to ${to_id}")
             if to_id != self.full_user_id:
                 if self.verbose:
-                    lsnp_logger.info(f"[DM IGNORED] Not for us: {to_id}")
+                    self.lsnp_logger.info(f"[DM IGNORED] Not for us: {to_id}")
                 return
                 
             if not validate_token(token, "chat"):
                 if self.verbose:
-                    lsnp_logger.info(f"[DM REJECTED] Invalid token from {from_id}")
+                    self.lsnp_logger.info(f"[DM REJECTED] Invalid token from {from_id}")
                 return
             content = kv.get("CONTENT", "")
             message_id = kv.get("MESSAGE_ID", "")
@@ -267,7 +267,7 @@ class LSNPController:
             # Get display name for prettier output
             display_name = from_id.split('@')[0]  # Default to username part
             if self.verbose:
-                lsnp_logger.info(f"{display_name}: {content}")
+                self.lsnp_logger.info(f"{display_name}: {content}")
             # Check if it's from ourselves
             if from_id == self.full_user_id:
                 display_name = self.display_name
@@ -278,9 +278,9 @@ class LSNPController:
                         display_name = peer.display_name
                         break
             
-            lsnp_logger.info(f"{display_name}: {content}")
+            self.lsnp_logger.info(f"{display_name}: {content}")
             self.inbox.append(f"[{timestamp}] {display_name}: {content}")
-            lsnp_logger.debug(f"Send Ack")
+            self.lsnp_logger.debug(f"Send Ack")
             self._send_ack(message_id, addr)
   
         elif msg_type == "FOLLOW":
@@ -294,7 +294,7 @@ class LSNPController:
             display_name = from_id.split('@')[0]
             
             if to_id == self.full_user_id:
-                lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) is now following you.")
+                self.lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) is now following you.")
                 self.inbox.append(f"User {display_name} started following you.")
                 self._send_ack(message_id, addr)
                 self.followers.append(from_id)
@@ -307,7 +307,7 @@ class LSNPController:
             
             message_id = kv.get("MESSAGE_ID", "")
             display_name = from_id.split('@')[0]
-            lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) has unfollowed you.")
+            self.lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) has unfollowed you.")
             self.inbox.append(f"User {display_name} unfollowed you.")
             self._send_ack(message_id, addr)
             self.followers.remove(from_id)
@@ -321,7 +321,7 @@ class LSNPController:
             token = kv.get("TOKEN", "")
             message_id = kv.get("MESSAGE_ID", "")
             if not validate_token(token, "post"):
-                    lsnp_logger.warning(f"[POST REJECTED] Invalid token from {from_id}")
+                    self.lsnp_logger.warning(f"[POST REJECTED] Invalid token from {from_id}")
                     return
             content = kv.get("CONTENT", "")
             timestamp = kv.get("TIMESTAMP", "")
@@ -332,7 +332,7 @@ class LSNPController:
                             break
             if not display_name:
               display_name = from_id.split('@')[0]
-            lsnp_logger.info(f"[POST] {display_name}: {content}")
+            self.lsnp_logger.info(f"[POST] {display_name}: {content}")
             self.inbox.append(f"[{timestamp}] {display_name} (POST): {content}")
             self._send_ack(message_id, addr)
 
@@ -365,14 +365,14 @@ class LSNPController:
             if message_id in self.ack_events:
                 self.ack_events[message_id].set()
                 if self.verbose:
-                    lsnp_logger.info(f"[ACK] Received for message {message_id}")
+                    self.lsnp_logger.info(f"[ACK] Received for message {message_id}")
         
         elif msg_type == "PING":
             
             
             user_id = kv.get("USER_ID", "")
             if self.verbose:
-                lsnp_logger.info(f"[PING] From {user_id}")
+                self.lsnp_logger.info(f"[PING] From {user_id}")
 
         elif msg_type == "FILE_ACCEPT":
             from_id = kv.get("FROM", "")
@@ -389,7 +389,7 @@ class LSNPController:
             if not validate_token(token, "file"):
                 del self.pending_offers[file_id] 
                 if self.verbose:
-                    lsnp_logger.info(f"[FILE_ACCEPT REJECTED] Invalid token from {from_id}")
+                    self.lsnp_logger.info(f"[FILE_ACCEPT REJECTED] Invalid token from {from_id}")
                 
                 return
             
@@ -398,7 +398,7 @@ class LSNPController:
                 self.file_responses[file_id] = "ACCEPTED"
                 self.file_response_events[file_id].set()
                 if self.verbose:
-                    lsnp_logger.info(f"[FILE_ACCEPT] Received for {file_id}")
+                    self.lsnp_logger.info(f"[FILE_ACCEPT] Received for {file_id}")
 
         elif msg_type == "FILE_REJECT":
             from_id = kv.get("FROM", "")
@@ -416,7 +416,7 @@ class LSNPController:
             if not validate_token(token, "file"):
                 del self.pending_offers[file_id] 
                 if self.verbose:
-                    lsnp_logger.info(f"[FILE_REJECT REJECTED] Invalid token from {from_id}")
+                    self.lsnp_logger.info(f"[FILE_REJECT REJECTED] Invalid token from {from_id}")
                     
                 return
             
@@ -425,7 +425,7 @@ class LSNPController:
                 self.file_responses[file_id] = "REJECTED"
                 self.file_response_events[file_id].set()
                 if self.verbose:
-                    lsnp_logger.info(f"[FILE_REJECT] Received for {file_id}")
+                    self.lsnp_logger.info(f"[FILE_REJECT] Received for {file_id}")
         elif msg_type == "LIKE":
             from_id = kv.get("FROM", "");
             
@@ -449,7 +449,7 @@ class LSNPController:
             gameid = str(kv.get("GAMEID"))
             symbol = str(kv.get("SYMBOL"))
             
-            lsnp_logger.info(f"{from_id.split('@')[0]} is inviting you to play tic-tac-toe.")
+            self.lsnp_logger.info(f"{from_id.split('@')[0]} is inviting you to play tic-tac-toe.")
             
             self.tictactoe_games[gameid] = {
                 "board": [" "] * 9,
@@ -487,8 +487,8 @@ class LSNPController:
             gameid = kv.get("GAMEID")
             result = kv.get("RESULT")
             line = kv.get("WINNING_LINE", "")
-            lsnp_logger.info(f"Game {gameid} result: {result}")
-            lsnp_logger.info(f"Winning line: {line}")
+            self.lsnp_logger.info(f"Game {gameid} result: {result}")
+            self.lsnp_logger.info(f"Winning line: {line}")
             self.gamemanager._print_ttt_board(self.tictactoe_games[gameid]["board"])
             
             self.tictactoe_games[gameid]["active"] = False
@@ -514,16 +514,16 @@ class LSNPController:
             
             if not validate_token(token, "group"):
                 if self.verbose:
-                    lsnp_logger.info(f"[GROUP_CREATE REJECTED] Invalid token from {from_id}")
+                    self.lsnp_logger.info(f"[GROUP_CREATE REJECTED] Invalid token from {from_id}")
                 return
             
             group = Group(group_id, group_name, from_id, parts)
             self.groups.append(group)
 
-            lsnp_logger.info(f"[GROUP_CREATE] You've been added to \"{group_name}\"")
+            self.lsnp_logger.info(f"[GROUP_CREATE] You've been added to \"{group_name}\"")
             if self.verbose:
-                lsnp_logger.info(f"[GROUP_CREATE] Owner: {from_id}")
-                lsnp_logger.info(f"[GROUP_CREATE] Members: {members}")
+                self.lsnp_logger.info(f"[GROUP_CREATE] Owner: {from_id}")
+                self.lsnp_logger.info(f"[GROUP_CREATE] Members: {members}")
 
         elif msg_type == "GROUP_ADD":
             from_id: str = kv.get("FROM", "")
@@ -545,13 +545,13 @@ class LSNPController:
                             
             if not validate_token(token, "group"):
                 if self.verbose:
-                    lsnp_logger.info(f"[GROUP_ADD REJECTED] Invalid token from {from_id}")
+                    self.lsnp_logger.info(f"[GROUP_ADD REJECTED] Invalid token from {from_id}")
                 return
 
             if self.full_user_id in add_parts:
                 group = Group(group_id, group_name, from_id, member_parts)
                 self.groups.append(group)
-                lsnp_logger.info(f"[GROUP_ADD] You've been added to \"{group_name}\"")
+                self.lsnp_logger.info(f"[GROUP_ADD] You've been added to \"{group_name}\"")
             else:
                 group_index = -1
                 for index, group in enumerate(self.groups):
@@ -559,10 +559,10 @@ class LSNPController:
                         group_index = index
                         break
                 self.groups[group_index].members = member_parts
-                lsnp_logger.info(f"[GROUP_ADD] The group \"{self.groups[group_index].group_name}\" member list was updated.")
+                self.lsnp_logger.info(f"[GROUP_ADD] The group \"{self.groups[group_index].group_name}\" member list was updated.")
             if self.verbose:
-                lsnp_logger.info(f"[GROUP_ADD] Owner: {from_id}")
-                lsnp_logger.info(f"[GROUP_ADD] Members: {members}")
+                self.lsnp_logger.info(f"[GROUP_ADD] Owner: {from_id}")
+                self.lsnp_logger.info(f"[GROUP_ADD] Members: {members}")
 
         elif msg_type == "GROUP_REMOVE":
             from_id: str = kv.get("FROM", "")
@@ -591,24 +591,24 @@ class LSNPController:
             
             if not validate_token(token, "group"):
                 if self.verbose:
-                    lsnp_logger.info(f"[GROUP_REMOVE REJECTED] Invalid token from {from_id}")
+                    self.lsnp_logger.info(f"[GROUP_REMOVE REJECTED] Invalid token from {from_id}")
                 return
             
             if self.full_user_id in remove_parts:
-                lsnp_logger.info(f"[GROUP_REMOVE] You've been removed from \"{self.groups[group_index].group_name}\"")
+                self.lsnp_logger.info(f"[GROUP_REMOVE] You've been removed from \"{self.groups[group_index].group_name}\"")
                 self.groups.pop(group_index)
             else:
                 for member in remove_parts:
                     self.groups[group_index].members.remove(member)
-                lsnp_logger.info(f"[GROUP_REMOVE] The group \"{self.groups[group_index].group_name}\" member list was updated.")
+                self.lsnp_logger.info(f"[GROUP_REMOVE] The group \"{self.groups[group_index].group_name}\" member list was updated.")
             
             if self.verbose:
                 members_str = ""
                 for member in self.groups[group_index].members:
                     members_str = members_str + ","
                 members_str = members_str[:-1]
-                lsnp_logger.info(f"[GROUP_REMOVE] Owner: {from_id}")
-                lsnp_logger.info(f"[GROUP_REMOVE] Members: {members_str}")
+                self.lsnp_logger.info(f"[GROUP_REMOVE] Owner: {from_id}")
+                self.lsnp_logger.info(f"[GROUP_REMOVE] Members: {members_str}")
 
         elif msg_type == "GROUP_MESSAGE":
             from_id = kv.get("FROM", "")
@@ -634,10 +634,10 @@ class LSNPController:
             
             if not validate_token(token, "group"):
                 if self.verbose:
-                    lsnp_logger.info(f"[GROUP MESSAGE REJECTED] Invalid token from {from_id}")
+                    self.lsnp_logger.info(f"[GROUP MESSAGE REJECTED] Invalid token from {from_id}")
                 return
             
-            lsnp_logger.info(f"[\"{self.groups[group_index].group_name}\"] {from_id}: {content}")
+            self.lsnp_logger.info(f"[\"{self.groups[group_index].group_name}\"] {from_id}: {content}")
             self._send_ack(message_id, addr)
 
 
@@ -649,12 +649,12 @@ class LSNPController:
         # Verify this message is for usf
         if to_id != self.full_user_id:
             if self.verbose:
-                lsnp_logger.info(f"[FILE_OFFER IGNORED] Not for us: {to_id}")
+                self.lsnp_logger.info(f"[FILE_OFFER IGNORED] Not for us: {to_id}")
             return
         
         if not validate_token(token, "file"):
             if self.verbose:
-                lsnp_logger.info(f"[FILE_OFFER REJECTED] Invalid token from {from_id}")
+                self.lsnp_logger.info(f"[FILE_OFFER REJECTED] Invalid token from {from_id}")
             return
         
         filename = kv.get("FILENAME", "")
@@ -679,9 +679,9 @@ class LSNPController:
                 sender_name = peer.display_name
                 break
         
-        lsnp_logger.info(f"User {sender_name} is sending you a file do you accept?")
+        self.lsnp_logger.info(f"User {sender_name} is sending you a file do you accept?")
         if self.verbose:
-            lsnp_logger.info(f"[FILE_OFFER] {filename} ({filesize} bytes) from {sender_name}")
+            self.lsnp_logger.info(f"[FILE_OFFER] {filename} ({filesize} bytes) from {sender_name}")
 
     def _handle_file_chunk(self, kv: dict, addr: Tuple[str, int]):
         from_id = kv.get("FROM", "")
@@ -694,7 +694,7 @@ class LSNPController:
         
         if not validate_token(token, "file"):
             if self.verbose:
-                lsnp_logger.info(f"[FILE_CHUNK REJECTED] Invalid token from {from_id}")
+                self.lsnp_logger.info(f"[FILE_CHUNK REJECTED] Invalid token from {from_id}")
             return
         
         file_id = kv.get("FILEID", "")
@@ -708,7 +708,7 @@ class LSNPController:
         if not transfer:
             # Ignore chunks for files we haven't accepted
             if self.verbose:
-                lsnp_logger.info(f"[FILE_CHUNK IGNORED] No active transfer for {file_id}")
+                self.lsnp_logger.info(f"[FILE_CHUNK IGNORED] No active transfer for {file_id}")
             return
         
         try:
@@ -716,7 +716,7 @@ class LSNPController:
             success = transfer.add_chunk(chunk_index, chunk_data)
             
             if self.verbose:
-                lsnp_logger.info(f"[FILE_CHUNK] {chunk_index+1}/{total_chunks} for {transfer.filename}")
+                self.lsnp_logger.info(f"[FILE_CHUNK] {chunk_index+1}/{total_chunks} for {transfer.filename}")
             
             # Check if transfer is complete
             if transfer.completed:
@@ -724,14 +724,14 @@ class LSNPController:
                 
         except Exception as e:
             if self.verbose:
-                lsnp_logger.info(f"[FILE_CHUNK ERROR] Failed to process chunk: {e}")
+                self.lsnp_logger.info(f"[FILE_CHUNK ERROR] Failed to process chunk: {e}")
 
     def _handle_file_received(self, kv: dict, addr: Tuple[str, int]):
         file_id = kv.get("FILEID", "")
         status = kv.get("STATUS", "")
         
         if self.verbose:
-            lsnp_logger.info(f"[FILE_RECEIVED] {file_id} - {status}")
+            self.lsnp_logger.info(f"[FILE_RECEIVED] {file_id} - {status}")
 
     def _complete_file_transfer(self, transfer: FileTransfer, sender_addr: Tuple[str, int]):
         """Complete a file transfer and save the file"""
@@ -749,8 +749,8 @@ class LSNPController:
             with open(file_path, 'wb') as f:
                 f.write(assembled_data)
             
-            lsnp_logger.info(f"File transfer of {transfer.filename} is complete")
-            lsnp_logger.info(f"File saved to: {file_path}")
+            self.lsnp_logger.info(f"File transfer of {transfer.filename} is complete")
+            self.lsnp_logger.info(f"File saved to: {file_path}")
             
             # Send FILE_RECEIVED confirmation
             self._send_file_received(transfer.file_id, transfer.sender_id, "COMPLETE")
@@ -760,7 +760,7 @@ class LSNPController:
                 del self.active_transfers[transfer.file_id]
                 
         except Exception as e:
-            lsnp_logger.error(f"[FILE_TRANSFER ERROR] Failed to complete transfer: {e}")
+            self.lsnp_logger.error(f"[FILE_TRANSFER ERROR] Failed to complete transfer: {e}")
 
     def _send_file_received(self, file_id: str, recipient_id: str, status: str):
         """Send FILE_RECEIVED message"""
@@ -775,10 +775,10 @@ class LSNPController:
         try:
             self.socket.sendto(msg.encode(), (peer.ip, peer.port))
             if self.verbose:
-                lsnp_logger.info(f"[FILE_RECEIVED SENT] {file_id} - {status}")
+                self.lsnp_logger.info(f"[FILE_RECEIVED SENT] {file_id} - {status}")
         except Exception as e:
             if self.verbose:
-                lsnp_logger.info(f"[FILE_RECEIVED ERROR] {e}")
+                self.lsnp_logger.info(f"[FILE_RECEIVED ERROR] {e}")
 
     def _handle_json_message(self, msg: dict, addr):
         # Legacy handler for any remaining JSON messages
@@ -788,12 +788,12 @@ class LSNPController:
         if msg_type == "DM":
             token = msg.get("token", "")
             if not validate_token(token):
-                lsnp_logger.warning(f"[DM REJECTED] Invalid token from {sender_id}")
+                self.lsnp_logger.warning(f"[DM REJECTED] Invalid token from {sender_id}")
                 return
             content = msg.get("content")
             message_id = msg.get("message_id")
             timestamp = msg.get("timestamp")
-            lsnp_logger.info(f"{sender_id}: {content}")
+            self.lsnp_logger.info(f"{sender_id}: {content}")
             self.inbox.append(f"[{timestamp}] {sender_id}: {content}")
             self._send_ack_json(sender_id, addr, message_id)
 
@@ -807,7 +807,7 @@ class LSNPController:
         self.socket.sendto(ack_msg.encode(), addr)
         
         if self.verbose:
-            lsnp_logger.info(f"[ACK SENT] For message {message_id} to {addr}")
+            self.lsnp_logger.info(f"[ACK SENT] For message {message_id} to {addr}")
 
     def _send_ack_json(self, sender_id, addr, message_id):
         # Legacy JSON ACK for compatibility
@@ -822,7 +822,7 @@ class LSNPController:
         self.ip_tracker.log_new_ip(peer.ip, peer.user_id, "mdns_discovery")
         
         if self.verbose:
-            lsnp_logger.info(f"[DISCOVERED] {peer.display_name} ({peer.user_id})")
+            self.lsnp_logger.info(f"[DISCOVERED] {peer.display_name} ({peer.user_id})")
 
     def _send_file_response(self, recipient_id: str, file_id: str, response_type: str):
         """Send FILE_ACCEPT or FILE_REJECT message"""
@@ -843,15 +843,15 @@ class LSNPController:
         try:
             self.socket.sendto(msg.encode(), (peer.ip, peer.port))
             if self.verbose:
-                lsnp_logger.info(f"[{response_type} SENT] {file_id}")
+                self.lsnp_logger.info(f"[{response_type} SENT] {file_id}")
         except Exception as e:
             if self.verbose:
-                lsnp_logger.info(f"[{response_type} ERROR] {e}")
+                self.lsnp_logger.info(f"[{response_type} ERROR] {e}")
 
     def accept_file(self, file_id: str):
         """Accept a pending file offer"""
         if file_id not in self.pending_offers:
-            lsnp_logger.error(f"[ERROR] No pending file offer with ID: {file_id}")
+            self.lsnp_logger.error(f"[ERROR] No pending file offer with ID: {file_id}")
             return
         
         transfer = self.pending_offers[file_id]
@@ -862,12 +862,12 @@ class LSNPController:
         # Send FILE_ACCEPT message to sender
         self._send_file_response(transfer.sender_id, file_id, "FILE_ACCEPT")
         
-        lsnp_logger.info(f"[FILE ACCEPTED] {transfer.filename} from {transfer.sender_id.split('@')[0]}")
+        self.lsnp_logger.info(f"[FILE ACCEPTED] {transfer.filename} from {transfer.sender_id.split('@')[0]}")
 
     def reject_file(self, file_id: str):
         """Reject a pending file offer"""
         if file_id not in self.pending_offers:
-            lsnp_logger.error(f"[ERROR] No pending file offer with ID: {file_id}")
+            self.lsnp_logger.error(f"[ERROR] No pending file offer with ID: {file_id}")
             return
         
         transfer = self.pending_offers[file_id]
@@ -877,7 +877,7 @@ class LSNPController:
         
         del self.pending_offers[file_id]
         
-        lsnp_logger.info(f"[FILE REJECTED] {transfer.filename} from {transfer.sender_id.split('@')[0]}")
+        self.lsnp_logger.info(f"[FILE REJECTED] {transfer.filename} from {transfer.sender_id.split('@')[0]}")
 
     def send_file(self, recipient_id: str, file_path: str, description: str = ""):
         """Send a file to another user"""
@@ -890,12 +890,12 @@ class LSNPController:
                     full_recipient_id = user_id
                     break
             if not full_recipient_id:
-                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
                 return
             recipient_id = full_recipient_id
 
         if recipient_id not in self.peer_map:
-            lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+            self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
             return
 
         # Check if file_path is absolute or relative
@@ -910,12 +910,12 @@ class LSNPController:
                 if os.path.exists(project_file_path):
                     file_path = project_file_path
                 else:
-                    lsnp_logger.error(f"[ERROR] File not found: {file_path}")
-                    lsnp_logger.info(f"[HINT] Place files in: {os.path.join(self.project_root, 'files')}")
+                    self.lsnp_logger.error(f"[ERROR] File not found: {file_path}")
+                    self.lsnp_logger.info(f"[HINT] Place files in: {os.path.join(self.project_root, 'files')}")
                     return
 
         if not os.path.exists(file_path):
-            lsnp_logger.error(f"[ERROR] File not found: {file_path}")
+            self.lsnp_logger.error(f"[ERROR] File not found: {file_path}")
             return
 
         peer = self.peer_map[recipient_id]
@@ -953,7 +953,7 @@ class LSNPController:
                         f"TOKEN: {token}\n")
             
             self.socket.sendto(offer_msg.encode(), (peer.ip, peer.port))
-            lsnp_logger.info(f"[FILE OFFER SENT] {filename} to {peer.display_name}")
+            self.lsnp_logger.info(f"[FILE OFFER SENT] {filename} to {peer.display_name}")
             
             # Wait a bit for the recipient to accept (in a real implementation, 
             # you might want to wait for an acceptance message)
@@ -961,7 +961,7 @@ class LSNPController:
                 response = self.file_responses.get(file_id)
                 
                 if response == "ACCEPTED":
-                    lsnp_logger.info(f"[FILE ACCEPTED] Sending {filename} to {peer.display_name}")
+                    self.lsnp_logger.info(f"[FILE ACCEPTED] Sending {filename} to {peer.display_name}")
                     
                     # Send file chunks
                     for chunk_index in range(total_chunks):
@@ -983,18 +983,18 @@ class LSNPController:
                         self.socket.sendto(chunk_msg.encode(), (peer.ip, peer.port))
                         
                         if self.verbose:
-                            lsnp_logger.info(f"[FILE CHUNK SENT] {chunk_index+1}/{total_chunks} to {peer.display_name}")
+                            self.lsnp_logger.info(f"[FILE CHUNK SENT] {chunk_index+1}/{total_chunks} to {peer.display_name}")
                         
                         time.sleep(0.1)  # Small delay between chunks
                     
-                    lsnp_logger.info(f"[FILE TRANSFER COMPLETE] {filename} sent to {peer.display_name}")
+                    self.lsnp_logger.info(f"[FILE TRANSFER COMPLETE] {filename} sent to {peer.display_name}")
                     
                 elif response == "REJECTED":
-                    lsnp_logger.info(f"[FILE REJECTED] {peer.display_name} rejected {filename}")
+                    self.lsnp_logger.info(f"[FILE REJECTED] {peer.display_name} rejected {filename}")
                 else:
-                    lsnp_logger.error(f"[FILE ERROR] Unknown response: {response}")
+                    self.lsnp_logger.error(f"[FILE ERROR] Unknown response: {response}")
             else:
-                lsnp_logger.error(f"[FILE TIMEOUT] No response from {peer.display_name} for {filename}")
+                self.lsnp_logger.error(f"[FILE TIMEOUT] No response from {peer.display_name} for {filename}")
             
             # Clean up
             if file_id in self.file_response_events:
@@ -1003,7 +1003,7 @@ class LSNPController:
                 del self.file_responses[file_id]
                 
         except Exception as e:
-            lsnp_logger.error(f"[FILE SEND ERROR] {e}")
+            self.lsnp_logger.error(f"[FILE SEND ERROR] {e}")
             # Clean up on error
             if file_id in self.file_response_events:
                 del self.file_response_events[file_id]
@@ -1029,28 +1029,28 @@ class LSNPController:
     def list_pending_files(self):
         """List pending file offers"""
         if not self.pending_offers:
-            lsnp_logger.info("No pending file offers.")
+            self.lsnp_logger.info("No pending file offers.")
             return
         
-        lsnp_logger.info("Pending file offers:")
+        self.lsnp_logger.info("Pending file offers:")
         for file_id, transfer in self.pending_offers.items():
             sender_name = transfer.sender_id.split('@')[0]
-            lsnp_logger.info(f"- {transfer.filename} ({transfer.filesize} bytes) from {sender_name}")
-            lsnp_logger.info(f"  File ID: {file_id}")
+            self.lsnp_logger.info(f"- {transfer.filename} ({transfer.filesize} bytes) from {sender_name}")
+            self.lsnp_logger.info(f"  File ID: {file_id}")
             if transfer.description:
-                lsnp_logger.info(f"  Description: {transfer.description}")
+                self.lsnp_logger.info(f"  Description: {transfer.description}")
 
     def list_active_transfers(self):
         """List active file transfers"""
         if not self.active_transfers:
-            lsnp_logger.info("No active file transfers.")
+            self.lsnp_logger.info("No active file transfers.")
             return
         
-        lsnp_logger.info("Active file transfers:")
+        self.lsnp_logger.info("Active file transfers:")
         for file_id, transfer in self.active_transfers.items():
             sender_name = transfer.sender_id.split('@')[0]
             progress = f"{transfer.received_chunks}/{transfer.total_chunks}"
-            lsnp_logger.info(f"- {transfer.filename} from {sender_name}: {progress} chunks")
+            self.lsnp_logger.info(f"- {transfer.filename} from {sender_name}: {progress} chunks")
 
     def send_dm(self, recipient_id: str, content: str):
         # Accept both formats: "user" or "user@ip"
@@ -1062,15 +1062,15 @@ class LSNPController:
                     full_recipient_id = user_id
                     break
             if not full_recipient_id:
-                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
                 return
             recipient_id = full_recipient_id
 
         if recipient_id not in self.peer_map:
-            lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+            self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
             return
         if self.verbose: 
-          lsnp_logger.info(f"[DM SEND] to {recipient_id}: {content}")
+          self.lsnp_logger.info(f"[DM SEND] to {recipient_id}: {content}")
         
         peer = self.peer_map[recipient_id]
         message_id = str(uuid.uuid4())
@@ -1090,17 +1090,17 @@ class LSNPController:
         for attempt in range(RETRY_COUNT):
             self.socket.sendto(msg.encode(), (peer.ip, peer.port))
             if self.verbose:
-                lsnp_logger.info(f"[DM SEND] Attempt {attempt + 1} to {recipient_id} at {peer.ip}")
+                self.lsnp_logger.info(f"[DM SEND] Attempt {attempt + 1} to {recipient_id} at {peer.ip}")
             
             if ack_event.wait(RETRY_INTERVAL):
-                lsnp_logger.info(f"[DM SENT] to {peer.display_name} at {peer.ip}")
+                self.lsnp_logger.info(f"[DM SENT] to {peer.display_name} at {peer.ip}")
                 del self.ack_events[message_id]
                 return
             
             if self.verbose:
-                lsnp_logger.info(f"[RETRY] {attempt + 1} for {recipient_id} at {peer.ip}")
+                self.lsnp_logger.info(f"[RETRY] {attempt + 1} for {recipient_id} at {peer.ip}")
 
-        lsnp_logger.error(f"[FAILED] DM to {peer.display_name} at {peer.ip}")
+        self.lsnp_logger.error(f"[FAILED] DM to {peer.display_name} at {peer.ip}")
         del self.ack_events[message_id]
 
     def play_tictactoe(self, recipient_id: str):
@@ -1113,12 +1113,12 @@ class LSNPController:
                     full_recipient_id = user_id
                     break
             if not full_recipient_id:
-                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
                 return
             recipient_id = full_recipient_id
 
         if recipient_id not in self.peer_map:
-            lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+            self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
             return
 
     def _periodic_profile_broadcast(self):
@@ -1126,7 +1126,7 @@ class LSNPController:
             time.sleep(LSNP_BROADCAST_PERIOD_SECONDS)  # 5 minutes
             if self.peer_map:  # Only broadcast if we have peers
                 if self.verbose:
-                    lsnp_logger.info("Periodic Broadcast - Starting scheduled profile broadcast.")
+                    self.lsnp_logger.info("Periodic Broadcast - Starting scheduled profile broadcast.")
                 self.broadcast_profile()
 
     def send_ping(self):
@@ -1136,23 +1136,23 @@ class LSNPController:
   
         try:
             self.socket.sendto(msg.encode(), (broadcast_addr, self.port))
-            lsnp_logger.info(f"PING BROADCAST: Sent to {broadcast_addr}:{self.port}")    
+            self.lsnp_logger.info(f"PING BROADCAST: Sent to {broadcast_addr}:{self.port}")    
             if self.verbose:
-                lsnp_logger.info(f"[PING] Sent to {broadcast_addr}")
+                self.lsnp_logger.info(f"[PING] Sent to {broadcast_addr}")
         except Exception as e:
-            lsnp_logger.error(f"PING BROADCAST FAILED: To {broadcast_addr} - {e}")
+            self.lsnp_logger.error(f"PING BROADCAST FAILED: To {broadcast_addr} - {e}")
    
     def list_peers(self):
         if not self.peer_map:
-            lsnp_logger.info("No peers discovered yet.")
+            self.lsnp_logger.info("No peers discovered yet.")
             return
  
-        lsnp_logger.info(f"Peer List: {len(self.peer_map)} peers active.")
-        lsnp_logger.info("Available peers:")
+        self.lsnp_logger.info(f"Peer List: {len(self.peer_map)} peers active.")
+        self.lsnp_logger.info("Available peers:")
         for peer in self.peer_map.values():
             # Show both short and full format
             short_id = peer.user_id.split('@')[0]
-            lsnp_logger.info(f"- {peer.display_name} ({short_id}) at {peer.ip}: {peer.port}")
+            self.lsnp_logger.info(f"- {peer.display_name} ({short_id}) at {peer.ip}: {peer.port}")
 
     def group_create(self, group_name: str, members: str):
         parts = members.split(",")
@@ -1166,12 +1166,12 @@ class LSNPController:
                         full_recipient_id = user_id
                         break
                 if not full_recipient_id:
-                    lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                    self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
                     return
                 parts[i] = full_recipient_id
 
             if parts[i] not in self.peer_map:
-                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
                 return
 
         group_id = str(uuid.uuid4())
@@ -1191,14 +1191,14 @@ class LSNPController:
             peer = self.peer_map[member]
             try:
                 self.socket.sendto(msg.encode(), (peer.ip, peer.port))
-                lsnp_logger.info(f"[GROUP_CREATE] Added member {peer.ip}:{peer.port}")
+                self.lsnp_logger.info(f"[GROUP_CREATE] Added member {peer.ip}:{peer.port}")
             except Exception as e:
-                lsnp_logger.error("[GROUP_CREATE] FAILED: To add {peer.ip} - {e}")
+                self.lsnp_logger.error("[GROUP_CREATE] FAILED: To add {peer.ip} - {e}")
 
-        lsnp_logger.info(f"GROUP CREATE: Group \"{group.group_name}\" successfully created.")
+        self.lsnp_logger.info(f"GROUP CREATE: Group \"{group.group_name}\" successfully created.")
     
         if self.verbose:
-            lsnp_logger.info(f"[GROUP_CREATE] Group created with {len(group.members) + 1} members.")
+            self.lsnp_logger.info(f"[GROUP_CREATE] Group created with {len(group.members) + 1} members.")
 
     def group_add(self, group_index: int, members: str):
         parts = members.split(",")
@@ -1212,12 +1212,12 @@ class LSNPController:
                         full_recipient_id = user_id
                         break
                 if not full_recipient_id:
-                    lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                    self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
                     return
                 parts[i] = full_recipient_id
 
             if parts[i] not in self.peer_map:
-                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
                 return
         
         for member in parts:
@@ -1247,14 +1247,14 @@ class LSNPController:
             try:
                 self.socket.sendto(msg.encode(), (peer.ip, peer.port))
                 if member in parts:
-                    lsnp_logger.info(f"[GROUP_ADD] Added member {peer.ip}:{peer.port}")
+                    self.lsnp_logger.info(f"[GROUP_ADD] Added member {peer.ip}:{peer.port}")
             except Exception as e:
-                lsnp_logger.error("[GROUP_ADD] FAILED: To add {peer.ip} - {e}")
+                self.lsnp_logger.error("[GROUP_ADD] FAILED: To add {peer.ip} - {e}")
 
-        lsnp_logger.info(f"GROUP ADD: Group \"{self.groups[group_index].group_name}\" successfully added {len(parts)} member(s).")
+        self.lsnp_logger.info(f"GROUP ADD: Group \"{self.groups[group_index].group_name}\" successfully added {len(parts)} member(s).")
     
         if self.verbose:
-            lsnp_logger.info(f"[GROUP_ADD] Group now contains {len(self.groups[group_index].members) + 1} members.")
+            self.lsnp_logger.info(f"[GROUP_ADD] Group now contains {len(self.groups[group_index].members) + 1} members.")
 
     def group_remove(self, group_index: int, members: str):
         parts = members.split(",")
@@ -1268,12 +1268,12 @@ class LSNPController:
                         full_recipient_id = user_id
                         break
                 if not full_recipient_id:
-                    lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                    self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
                     return
                 parts[i] = full_recipient_id
 
             if parts[i] not in self.peer_map:
-                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
                 return
         
         for member in parts:
@@ -1296,30 +1296,30 @@ class LSNPController:
             peer = self.peer_map[member]
             try:
                 self.socket.sendto(msg.encode(), (peer.ip, peer.port))
-                lsnp_logger.info(f"[GROUP_REMOVE] Removed member {peer.ip}:{peer.port}")
+                self.lsnp_logger.info(f"[GROUP_REMOVE] Removed member {peer.ip}:{peer.port}")
             except Exception as e:
-                lsnp_logger.error("[GROUP_REMOVE] FAILED: To remove {peer.ip} - {e}")
+                self.lsnp_logger.error("[GROUP_REMOVE] FAILED: To remove {peer.ip} - {e}")
 
         for member in self.groups[group_index].members:
             peer = self.peer_map[member]
             try:
                 self.socket.sendto(msg.encode(), (peer.ip, peer.port))
             except Exception as e:
-                lsnp_logger.error("[GROUP_REMOVE] FAILED: To address {peer.ip} - {e}")
+                self.lsnp_logger.error("[GROUP_REMOVE] FAILED: To address {peer.ip} - {e}")
 
-        lsnp_logger.info(f"GROUP REMOVE: Group \"{self.groups[group_index].group_name}\" successfully removed {len(parts)} member(s).")
+        self.lsnp_logger.info(f"GROUP REMOVE: Group \"{self.groups[group_index].group_name}\" successfully removed {len(parts)} member(s).")
     
         if self.verbose:
-            lsnp_logger.info(f"[GROUP_REMOVE] Group now contains {len(self.groups[group_index].members) + 1} members.")
+            self.lsnp_logger.info(f"[GROUP_REMOVE] Group now contains {len(self.groups[group_index].members) + 1} members.")
 
     def group_message(self, group_index: int, content: str):
         for recipient_id in self.groups[group_index].members:
             if recipient_id not in self.peer_map:
-                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
                 return
 
         if self.groups[group_index].owner_id not in self.peer_map:
-            lsnp_logger.error(f"[ERROR] Unknown peer: {self.groups[group_index].owner_id}")
+            self.lsnp_logger.error(f"[ERROR] Unknown peer: {self.groups[group_index].owner_id}")
             return
             
         message_id = str(uuid.uuid4())
@@ -1342,16 +1342,16 @@ class LSNPController:
                 for attempt in range(RETRY_COUNT):
                     self.socket.sendto(msg.encode(), (peer.ip, peer.port))
                     if self.verbose:
-                        lsnp_logger.info(f"[GROUP MESSAGE SEND] Attempt {attempt + 1} to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
+                        self.lsnp_logger.info(f"[GROUP MESSAGE SEND] Attempt {attempt + 1} to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
                     
                     if ack_event.wait(RETRY_INTERVAL):
-                        lsnp_logger.info(f"[GROUP MESSAGE SENT] to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
+                        self.lsnp_logger.info(f"[GROUP MESSAGE SENT] to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
                         break
                     
                     if self.verbose:
-                        lsnp_logger.info(f"[RETRY] {attempt + 1} to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
+                        self.lsnp_logger.info(f"[RETRY] {attempt + 1} to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
             except Exception as e:
-                lsnp_logger.error(f"[FAILED] Group Message to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
+                self.lsnp_logger.error(f"[FAILED] Group Message to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
                 del self.ack_events[message_id] 
 
         peer = self.peer_map[self.groups[group_index].owner_id]
@@ -1359,45 +1359,45 @@ class LSNPController:
             for attempt in range(RETRY_COUNT):
                 self.socket.sendto(msg.encode(), (peer.ip, peer.port))
                 if self.verbose:
-                    lsnp_logger.info(f"[GROUP MESSAGE SEND] Attempt {attempt + 1} to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
+                    self.lsnp_logger.info(f"[GROUP MESSAGE SEND] Attempt {attempt + 1} to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
                 
                 if ack_event.wait(RETRY_INTERVAL):
-                    lsnp_logger.info(f"[GROUP MESSAGE SENT] to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
+                    self.lsnp_logger.info(f"[GROUP MESSAGE SENT] to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
                     break
                 
                 if self.verbose:
-                    lsnp_logger.info(f"[RETRY] {attempt + 1} to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
+                    self.lsnp_logger.info(f"[RETRY] {attempt + 1} to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
         except Exception as e:
-                lsnp_logger.error(f"[FAILED] Group Message to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
+                self.lsnp_logger.error(f"[FAILED] Group Message to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
                 del self.ack_events[message_id] 
         
         del self.ack_events[message_id]
 
     def show_inbox(self):
         if not self.inbox:
-            lsnp_logger.info("No messages in inbox.")
+            self.lsnp_logger.info("No messages in inbox.")
             return
         
-        lsnp_logger.info("Inbox:")
+        self.lsnp_logger.info("Inbox:")
         for msg in self.inbox:
-            lsnp_logger.info(msg)
+            self.lsnp_logger.info(msg)
 
     def show_ip_stats(self):
         """Show IP address statistics"""
         stats = self.ip_tracker.get_ip_stats()
-        lsnp_logger.info("===| IP Address Statistics |===")
-        lsnp_logger.info(f"Total known IPs: {stats['total_known_ips']}")
-        lsnp_logger.info(f"Mapped to users: {stats['mapped_users']}")
-        lsnp_logger.info(f"Total connection attempts: {stats['total_connection_attempts']}")
-        lsnp_logger.info(f"Blocked IPs: {stats['blocked_ips']}")
+        self.lsnp_logger.info("===| IP Address Statistics |===")
+        self.lsnp_logger.info(f"Total known IPs: {stats['total_known_ips']}")
+        self.lsnp_logger.info(f"Mapped to users: {stats['mapped_users']}")
+        self.lsnp_logger.info(f"Total connection attempts: {stats['total_connection_attempts']}")
+        self.lsnp_logger.info(f"Blocked IPs: {stats['blocked_ips']}")
         
         if not stats['top_active_ips']:
             return
  
-        lsnp_logger.info("Most active IPs:")
+        self.lsnp_logger.info("Most active IPs:")
         for ip, count in stats['top_active_ips']:
             user = self.ip_tracker.ip_to_user.get(ip, "Unknown")
-            lsnp_logger.info(f"  {ip} ({user}): {count} connections")
+            self.lsnp_logger.info(f"  {ip} ({user}): {count} connections")
         
     def follow(self, user_id: str):
         # Resolve user_id to full_user_id if needed
@@ -1408,23 +1408,23 @@ class LSNPController:
                     full_user_id = id
                     break
             if not full_user_id:
-                lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
+                self.lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
                 return
             user_id = full_user_id
 
         if user_id not in self.peer_map:
-            lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
+            self.lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
             return
         elif user_id == self.full_user_id:
-            lsnp_logger.warning(f"[FOLLOW] Cannot follow yourself: {user_id}")
+            self.lsnp_logger.warning(f"[FOLLOW] Cannot follow yourself: {user_id}")
             return
         elif user_id in self.following:
-            lsnp_logger.warning(f"[FOLLOW] Already following {user_id}")
+            self.lsnp_logger.warning(f"[FOLLOW] Already following {user_id}")
             return
 
         # ✅ Add to following (not followers)
         self.following.add(user_id)
-        lsnp_logger.info(f"[FOLLOW] Now following {user_id}")
+        self.lsnp_logger.info(f"[FOLLOW] Now following {user_id}")
 
         peer = self.peer_map[user_id]
         message_id = str(uuid.uuid4())[:8]
@@ -1444,18 +1444,18 @@ class LSNPController:
         for attempt in range(RETRY_COUNT):
             self.socket.sendto(msg.encode(), (peer.ip, peer.port))
             if self.verbose:
-                lsnp_logger.info(f"[FOLLOW SEND] Attempt {attempt + 1} to {peer.display_name} at {peer.ip}")
+                self.lsnp_logger.info(f"[FOLLOW SEND] Attempt {attempt + 1} to {peer.display_name} at {peer.ip}")
 
             if ack_event.wait(RETRY_INTERVAL):
-                lsnp_logger.info(f"[FOLLOW SENT] to {peer.display_name} at {peer.ip}")
+                self.lsnp_logger.info(f"[FOLLOW SENT] to {peer.display_name} at {peer.ip}")
                 del self.ack_events[message_id]
                 self.following.add(user_id)
                 return
 
             if self.verbose:
-                lsnp_logger.info(f"[FOLLOW RETRY] {attempt + 1} for {peer.display_name} at {peer.ip}")
+                self.lsnp_logger.info(f"[FOLLOW RETRY] {attempt + 1} for {peer.display_name} at {peer.ip}")
 
-        lsnp_logger.error(f"[FOLLOW FAILED] Could not send to {peer.display_name} at {peer.ip}")
+        self.lsnp_logger.error(f"[FOLLOW FAILED] Could not send to {peer.display_name} at {peer.ip}")
         del self.ack_events[message_id]
 
     def unfollow(self, user_id: str):
@@ -1466,21 +1466,21 @@ class LSNPController:
                   full_user_id = id
                   break
           if not full_user_id:
-              lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
+              self.lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
               return
           user_id = full_user_id
 
       if user_id not in self.peer_map:
-          lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
+          self.lsnp_logger.error(f"[ERROR] Unknown peer: {user_id}")
           return
       elif user_id == self.full_user_id:
-          lsnp_logger.warning(f"[UNFOLLOW] Cannot unfollow yourself: {user_id}")
+          self.lsnp_logger.warning(f"[UNFOLLOW] Cannot unfollow yourself: {user_id}")
           return
       elif user_id not in self.following:
-          lsnp_logger.warning(f"[UNFOLLOW] Not following {user_id}")
+          self.lsnp_logger.warning(f"[UNFOLLOW] Not following {user_id}")
           return
 
-      lsnp_logger.info(f"[UNFOLLOW] Now unfollowing {user_id}")
+      self.lsnp_logger.info(f"[UNFOLLOW] Now unfollowing {user_id}")
       self.following.remove(user_id)
 
       peer = self.peer_map[user_id]
@@ -1501,18 +1501,18 @@ class LSNPController:
       for attempt in range(RETRY_COUNT):
           self.socket.sendto(msg.encode(), (peer.ip, peer.port))
           if self.verbose:
-              lsnp_logger.info(f"[UNFOLLOW SEND] Attempt {attempt + 1} to {peer.display_name} at {peer.ip}")
+              self.lsnp_logger.info(f"[UNFOLLOW SEND] Attempt {attempt + 1} to {peer.display_name} at {peer.ip}")
 
           if ack_event.wait(RETRY_INTERVAL):
-              lsnp_logger.info(f"[UNFOLLOW SENT] to {peer.display_name} at {peer.ip}")
+              self.lsnp_logger.info(f"[UNFOLLOW SENT] to {peer.display_name} at {peer.ip}")
               del self.ack_events[message_id]
               self.following.remove(user_id)
               return
 
           if self.verbose:
-              lsnp_logger.info(f"[UNFOLLOW RETRY] {attempt + 1} for {peer.display_name} at {peer.ip}")
+              self.lsnp_logger.info(f"[UNFOLLOW RETRY] {attempt + 1} for {peer.display_name} at {peer.ip}")
 
-      lsnp_logger.error(f"[UNFOLLOW FAILED] Could not send to {peer.display_name} at {peer.ip}")
+      self.lsnp_logger.error(f"[UNFOLLOW FAILED] Could not send to {peer.display_name} at {peer.ip}")
       del self.ack_events[message_id]
 
 
@@ -1527,7 +1527,7 @@ class LSNPController:
               avatar_base64 = base64.b64encode(img_file.read()).decode('utf-8')
           preview = avatar_base64[:20] + "..." if len(avatar_base64) > 20 else avatar_base64
         except Exception as e:
-              lsnp_logger.error(f"[DEBUG] Failed to generate avatar preview: {e}")
+              self.lsnp_logger.error(f"[DEBUG] Failed to generate avatar preview: {e}")
               
 
         # Log the message but without showing full AVATAR_DATA
@@ -1539,27 +1539,27 @@ class LSNPController:
               preview if preview else "[hidden]"
           )
 
-      # lsnp_logger.info(f"[DEBUG] PROFILE message to send:\n{safe_log_msg}")
+      # self.lsnp_logger.info(f"[DEBUG] PROFILE message to send:\n{safe_log_msg}")
           
       # Broadcast to the subnet
       broadcast_addr = self.ip.rsplit('.', 1)[0] + '.255'
 
       try:
           self.socket.sendto(msg.encode(), (broadcast_addr, self.port))
-          lsnp_logger.info(f"[PROFILE BROADCAST] Sent to {broadcast_addr}:{self.port}")
+          self.lsnp_logger.info(f"[PROFILE BROADCAST] Sent to {broadcast_addr}:{self.port}")
       except Exception as e:
-          lsnp_logger.error(f"[BROADCAST FAILED] {e}")
+          self.lsnp_logger.error(f"[BROADCAST FAILED] {e}")
 
       if self.verbose:
-          lsnp_logger.info("[BROADCAST] Profile message sent.")
+          self.lsnp_logger.info("[BROADCAST] Profile message sent.")
 
     def send_post(self, content: str):
       
       if self.verbose:
-        lsnp_logger.info(f"[POST] Sending post to {len(self.followers)} followers")
+        self.lsnp_logger.info(f"[POST] Sending post to {len(self.followers)} followers")
         
       if not self.followers:
-          lsnp_logger.warning("[POST] No followers to send the post to.")
+          self.lsnp_logger.warning("[POST] No followers to send the post to.")
           return
 
       message_map = {}  # Map follower_id → message_id
@@ -1569,13 +1569,13 @@ class LSNPController:
       
       for follower_id in self.followers:
           if self.verbose:
-              lsnp_logger.info(f"[POST] Sending post to {follower_id}")
+              self.lsnp_logger.info(f"[POST] Sending post to {follower_id}")
           if follower_id == self.full_user_id:
               if self.verbose:
-                  lsnp_logger.info("[POST] Skipping self")
+                  self.lsnp_logger.info("[POST] Skipping self")
               continue
           if follower_id not in self.peer_map:
-              lsnp_logger.warning(f"[POST] Skipped unknown follower: {follower_id}")
+              self.lsnp_logger.warning(f"[POST] Skipped unknown follower: {follower_id}")
               continue
 
           peer = self.peer_map[follower_id]
@@ -1602,9 +1602,9 @@ class LSNPController:
           try:
               self.socket.sendto(msg.encode(), (peer.ip, peer.port))
               if self.verbose:
-                  lsnp_logger.info(f"[POST SEND] Initial send to {peer.display_name} at {peer.ip}")
+                  self.lsnp_logger.info(f"[POST SEND] Initial send to {peer.display_name} at {peer.ip}")
           except Exception as e:
-              lsnp_logger.error(f"[POST ERROR] Failed to send to {peer.display_name}: {e}")
+              self.lsnp_logger.error(f"[POST ERROR] Failed to send to {peer.display_name}: {e}")
 
       # 2. Retry logic for all pending ACKs in batch
       for attempt in range(1, RETRY_COUNT):
@@ -1613,7 +1613,7 @@ class LSNPController:
               break  # All ACKed, stop early
 
           if self.verbose:
-              lsnp_logger.info(f"[POST RETRY] Attempt {attempt + 1} for {len(pending)} followers")
+              self.lsnp_logger.info(f"[POST RETRY] Attempt {attempt + 1} for {len(pending)} followers")
         
           time.sleep(RETRY_INTERVAL)
 
@@ -1636,16 +1636,16 @@ class LSNPController:
               try:
                   self.socket.sendto(msg.encode(), (peer.ip, peer.port))
                   if self.verbose:
-                      lsnp_logger.info(f"[POST RETRY] Resent to {peer.display_name} at {peer.ip}")
+                      self.lsnp_logger.info(f"[POST RETRY] Resent to {peer.display_name} at {peer.ip}")
               except Exception as e:
-                  lsnp_logger.error(f"[POST ERROR] Retry failed for {peer.display_name}: {e}")
+                  self.lsnp_logger.error(f"[POST ERROR] Retry failed for {peer.display_name}: {e}")
 
           # Wait before next retry
           time.sleep(RETRY_INTERVAL)
 
       # 3. Report final result
       sent_count = sum(1 for mid in message_map.values() if ack_events[mid].is_set())
-      lsnp_logger.info(f"[POST COMPLETE] Sent to {sent_count}/{len(self.followers)} followers")
+      self.lsnp_logger.info(f"[POST COMPLETE] Sent to {sent_count}/{len(self.followers)} followers")
 
       # Cleanup ack_events
       for mid in message_map.values():
@@ -1661,7 +1661,7 @@ class LSNPController:
               break
 
       if not full_owner_id:
-          lsnp_logger.error(f"[LIKE ERROR] Unknown post owner: {owner_name}")
+          self.lsnp_logger.error(f"[LIKE ERROR] Unknown post owner: {owner_name}")
           return
 
       peer = self.peer_map[full_owner_id]
@@ -1688,28 +1688,28 @@ class LSNPController:
       for attempt in range(RETRY_COUNT):
           self.socket.sendto(msg.encode(), (peer.ip, peer.port))
           if self.verbose:
-              lsnp_logger.info(f"[{action} SEND] Attempt {attempt + 1} to {peer.display_name} at {peer.ip}")
+              self.lsnp_logger.info(f"[{action} SEND] Attempt {attempt + 1} to {peer.display_name} at {peer.ip}")
 
           if ack_event.wait(RETRY_INTERVAL):
               if action == "LIKE":
                   self.post_likes.add(post_timestamp_id)
-                  lsnp_logger.info(f"[LIKE CONFIRMED] Post {post_timestamp_id} by {peer.display_name}")
+                  self.lsnp_logger.info(f"[LIKE CONFIRMED] Post {post_timestamp_id} by {peer.display_name}")
               else:
                   self.post_likes.remove(post_timestamp_id)
-                  lsnp_logger.info(f"[UNLIKE CONFIRMED] Post {post_timestamp_id} by {peer.display_name}")
+                  self.lsnp_logger.info(f"[UNLIKE CONFIRMED] Post {post_timestamp_id} by {peer.display_name}")
               del self.ack_events[timestamp]
               return
 
           if self.verbose:
-              lsnp_logger.info(f"[{action} RETRY] {attempt + 1} for {peer.display_name}")
+              self.lsnp_logger.info(f"[{action} RETRY] {attempt + 1} for {peer.display_name}")
 
-      lsnp_logger.error(f"[{action} FAILED] Could not send {action} to {peer.display_name}")
+      self.lsnp_logger.error(f"[{action} FAILED] Could not send {action} to {peer.display_name}")
       del self.ack_events[timestamp]
 
     def send_tictactoe_invite(self, recipient_id: str, symbol: str):
       symbol = symbol.upper()
       if symbol not in ("X", "O"):
-          lsnp_logger.error("Symbol must be X or O.")
+          self.lsnp_logger.error("Symbol must be X or O.")
           return
 
       if "@" not in recipient_id:
@@ -1718,7 +1718,7 @@ class LSNPController:
                   recipient_id = uid
                   break
       if recipient_id not in self.peer_map:
-          lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+          self.lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
           return
       
       gameid = f"g{len(self.tictactoe_games) % 256}"
@@ -1746,16 +1746,16 @@ class LSNPController:
 
       peer = self.peer_map[recipient_id]
       self.socket.sendto(msg.encode(), (peer.ip, peer.port))
-      lsnp_logger.info(f"Sent Tic Tac Toe invite to {recipient_id.split('@')[0]} as {symbol}")
+      self.lsnp_logger.info(f"Sent Tic Tac Toe invite to {recipient_id.split('@')[0]} as {symbol}")
 
   
     def send_tictactoe_move(self, gameid: str, position: int):
       game = self.tictactoe_games.get(gameid)
       if not game or not game.get("active"):
-          lsnp_logger.error(f"No active game: {gameid}")
+          self.lsnp_logger.error(f"No active game: {gameid}")
           return
       if position < 0 or position > 8 or game["board"][position] != " ":
-          lsnp_logger.error("Invalid move")
+          self.lsnp_logger.error("Invalid move")
           return
 
       game["board"][position] = game["my_symbol"]
@@ -1812,7 +1812,7 @@ class LSNPController:
       
       peer = self.peer_map[peer_id]
       self.socket.sendto(msg.encode(), (peer.ip, peer.port))
-      lsnp_logger.info(f"Game {gameid} ended: {result}")
+      self.lsnp_logger.info(f"Game {gameid} ended: {result}")
       game["active"] = False
 
     def forfeit_tictactoe(self, gameid: str):
@@ -1820,37 +1820,44 @@ class LSNPController:
 
 
     def run(self):
-      lsnp_logger.info(f"LSNP Peer started as {self.full_user_id}")
-      lsnp_logger.info("Type 'help' for commands.")
+      self.lsnp_logger.info(f"LSNP Peer started as {self.full_user_id}")
+      self.lsnp_logger.info("Type 'help' for commands.")
       cmd = ""
       while True:
         try:
-            cmd = lsnp_logger.input("", end="").strip()
+            cmd = self.lsnp_logger.input("", end="").strip()
             if cmd == "help":
               help_str = ("\nCommands:\n"
-                "  peers                                      - List discovered peers\n"
-                "  dms                                        - Show inbox\n"
-                "  dm <user> <msg>                            - Send direct message\n"
-                "  post <msg>                                 - Create a new post to followers\n"
-                "  follow <user>                              - Follow a user\n"
-                "  unfollow <user>                            - Unfollow a user\n"
-                "  sendfile <user> <filepath> [description]   - Send a file\n"
-                "  acceptfile <fileid>                        - Accept a pending file offer\n"
-                "  rejectfile <fileid>                        - Reject a pending file offer\n"
-                "  pendingfiles                               - List pending file offers\n"
-                "  transfers                                  - List active file transfers\n"
-                "  broadcast                                  - Send profile broadcast\n"
-                "  ttl <seconds>                              - Set TTL for posts (default: 60)\n"
-                "  tictactoe list                             - List active Tic Tac Toe games\n"
-                "  tictactoe invite <user> <X|O>              - Invite to Tic Tac Toe game\n"
-                "  tictactoe move <gameid> <position 0-8>     - Make a move in Tic Tac Toe\n"
-                "  tictactoe forfeit <gameid>                 - Forfeit a Tic Tac Toe game\n"
-                "  ping                                       - Send ping\n"
-                "  verbose                                    - Toggle verbose mode\n"
-                "  ipstats                                    - Show IP statistics\n"
-                "  quit                                       - Exit")
-              lsnp_logger.info(help_str)
-              lsnp_logger.info(help_str)
+                "  peers                                        - List discovered peers\n"
+                "  dms                                          - Show inbox\n"
+                "  dm <user> <msg>                              - Send direct message\n"
+                "  post <msg>                                   - Create a new post to followers\n"
+                "  follow <user>                                - Follow a user\n"
+                "  unfollow <user>                              - Unfollow a user\n"
+                "  sendfile <user> <filepath> [description]                 - Send a file\n"
+                "  acceptfile <fileid>                          - Accept a pending file offer\n"
+                "  rejectfile <fileid>                          - Reject a pending file offer\n"
+                "  pendingfiles                                 - List pending file offers\n"
+                "  transfers                                    - List active file transfers\n"
+                "  broadcast                                    - Send profile broadcast\n"
+                "  ttl <seconds>                                - Set TTL for posts (default: 60)\n"
+                "  tictactoe list                               - List active Tic Tac Toe games\n"
+                "  tictactoe invite <user> <X|O>                - Invite to Tic Tac Toe game\n"
+                "  tictactoe move <gameid> <position 0-8>       - Make a move in Tic Tac Toe\n"
+                "  tictactoe forfeit <gameid>                   - Forfeit a Tic Tac Toe game\n"
+                "  group list <name>                            - Show details of a group\n"
+                "  group create <name> <users>                  - Creates a group with one or more users\n"
+                "  group add <name> <user>                      - Adds a user to the group\n"
+                "  group remove <name> <user>                   - Removes a user from the group\n"
+                "  group message <name> <message>               - Sends a message to the group\n"
+                "  Note: Group names and messages must be enclosed in quotation marks.\n"
+                "  Note: Users must be separated by comma.\n"
+                "  ping                                         - Send ping\n"
+                "  verbose                                      - Toggle verbose mode\n"
+                "  ipstats                                      - Show IP statistics\n"
+                "  quit                                         - Exit")
+              self.lsnp_logger.info(help_str)
+              self.lsnp_logger.info(help_str)
             elif cmd == "peers":
               self.list_peers()
             elif cmd == "dms":
@@ -1858,21 +1865,21 @@ class LSNPController:
             elif cmd.startswith("dm "):
               parts = cmd.split(" ", 2)
               if len(parts) < 3:
-                lsnp_logger.info("Usage: dm <user_id> <message>")
+                self.lsnp_logger.info("Usage: dm <user_id> <message>")
                 continue
               _, recipient_id, message = parts
               self.send_dm(recipient_id, message)
             elif cmd.startswith("post "):
               parts = cmd.split(" ", 1)
               if len(parts) < 2:
-                lsnp_logger.info("Usage: post <message>")
+                self.lsnp_logger.info("Usage: post <message>")
                 continue
               _, message = parts
               self.send_post(message)
             elif cmd.startswith("like "):
               parts = cmd.split(" ")
               if len(parts) != 3:
-                  lsnp_logger.info("Usage: like <post_timestamp_id> <owner_id>")
+                  self.lsnp_logger.info("Usage: like <post_timestamp_id> <owner_id>")
                   continue
 
               _, post_timestamp_id, owner_id = parts
@@ -1880,28 +1887,28 @@ class LSNPController:
             elif cmd.startswith("ttl "):
               parts = cmd.split(" ", 1)
               if len(parts) < 2 or not parts[1].isdigit():
-                  lsnp_logger.info("Usage: ttl <seconds>")
+                  self.lsnp_logger.info("Usage: ttl <seconds>")
                   continue
               state.ttl = int(parts[1])
-              lsnp_logger.info(f"[TTL] TTL updated to {state.ttl} seconds")
+              self.lsnp_logger.info(f"[TTL] TTL updated to {state.ttl} seconds")
             elif cmd.startswith("follow "):
               parts = cmd.split(" ", 2)
               if len(parts) < 2:
-                lsnp_logger.info("Usage: follow <user_id>")
+                self.lsnp_logger.info("Usage: follow <user_id>")
                 continue
               _, user_id = parts
               self.follow(user_id)
             elif cmd.startswith("unfollow "):
               parts = cmd.split(" ", 2)
               if len(parts) < 2:
-                lsnp_logger.info("Usage: unfollow <user_id>")
+                self.lsnp_logger.info("Usage: unfollow <user_id>")
                 continue
               _, user_id = parts
               self.unfollow(user_id)
             elif cmd.startswith("sendfile "):
                   parts = cmd.split(" ", 3)
                   if len(parts) < 3:
-                      lsnp_logger.info("Usage: sendfile <user_id> <filepath> [description]")
+                      self.lsnp_logger.info("Usage: sendfile <user_id> <filepath> [description]")
                       continue
                   _, recipient_id, filepath = parts[:3]
                   description = parts[3] if len(parts) > 3 else ""
@@ -1909,14 +1916,14 @@ class LSNPController:
             elif cmd.startswith("acceptfile "):
                 parts = cmd.split(" ", 1)
                 if len(parts) < 2:
-                    lsnp_logger.info("Usage: acceptfile <fileid>")
+                    self.lsnp_logger.info("Usage: acceptfile <fileid>")
                     continue
                 _, file_id = parts
                 self.accept_file(file_id)
             elif cmd.startswith("rejectfile "):
                 parts = cmd.split(" ", 1)
                 if len(parts) < 2:
-                    lsnp_logger.info("Usage: rejectfile <fileid>")
+                    self.lsnp_logger.info("Usage: rejectfile <fileid>")
                     continue
                 _, file_id = parts
                 self.reject_file(file_id)
@@ -1938,7 +1945,7 @@ class LSNPController:
                               "  group message <name> <message> - Sends a message to the group\n"
                               "  Note: Group names and messages must be enclosed in quotation marks.\n"
                               "  Note: Users must be separated by comma.")
-                        lsnp_logger.info(group_help_str)
+                        self.lsnp_logger.info(group_help_str)
                         continue
                     parts = shlex.split(cmd)
                     group_index = -1
@@ -1947,52 +1954,56 @@ class LSNPController:
                             group_index = index
                             break
                     if group_index == -1 and parts[1] != "create":
-                        lsnp_logger.info(f"No group exists.")
+                        self.lsnp_logger.info(f"No group exists.")
                         continue
-                    if parts[1] == "list":
-                        lsnp_logger.info(f"Group Name: {self.groups[group_index].group_name}")
-                        lsnp_logger.info(f"Group Owner: {self.groups[group_index].owner_id}")
-                        lsnp_logger.info(f"Group Members:")
+                    if parts[1] == "lists":
+                        for group in self.groups:
+                            self.lsnp_logger.info(f"Group Name: {group.group_name}, Owner: {group.owner_id}, Members: {len(group.members)}")      
+                    elif parts[1] == "list":
+                        self.lsnp_logger.info(f"{group_index}")       
+                        self.lsnp_logger.info(f"Group Name: {self.groups[group_index].group_name}")
+                        self.lsnp_logger.info(f"Group Owner: {self.groups[group_index].owner_id}")
+                        self.lsnp_logger.info(f"Group Members:")
                         for member in self.groups[group_index].members:
-                            lsnp_logger.info(f"{member}")
+                            self.lsnp_logger.info(f"{member}")
                         continue
                     if len(parts) != 4:
-                        lsnp_logger.info("Usage: group <cmd> <name> <args>")
+                        self.lsnp_logger.info("Usage: group <cmd> <name> <args>")
                         continue
                     _, grp_cmd, grp_name, args = parts
                     if grp_cmd == "create":
                         self.group_create(grp_name, args)
                     elif grp_cmd == "add":
                         if self.groups[group_index].owner_id != self.full_user_id:
-                            lsnp_logger.info("No permission to manage group.")
+                            self.lsnp_logger.info("No permission to manage group.")
                         else:
                             self.group_add(group_index, args)
                     elif grp_cmd == "remove":
                         if self.groups[group_index].owner_id != self.full_user_id:
-                            lsnp_logger.info("No permission to manage group.")
+                            self.lsnp_logger.info("No permission to manage group.")
                         else:
                             self.group_remove(group_index, args)
                     elif grp_cmd == "message":
                         self.group_message(group_index, args)
                     else:
-                        lsnp_logger.info("Usage: group <cmd> <args>")
+                        self.lsnp_logger.info("Usage: group <cmd> <args>")
                         continue
             elif cmd == "tictactoe":
-                lsnp_logger.info("Usage: tictactoe invite <user> <X|O>, "
+                self.lsnp_logger.info("Usage: tictactoe invite <user> <X|O>, "
                                  "tictactoe move <gameid> <position 0-8>, "
                                  "tictactoe forfeit <gameid>")
             elif cmd == "tictactoe list":
                 if not self.tictactoe_games:
-                    lsnp_logger.info("No active Tic Tac Toe games.")
+                    self.lsnp_logger.info("No active Tic Tac Toe games.")
                 else:
-                    lsnp_logger.info("Active Tic Tac Toe games:")
+                    self.lsnp_logger.info("Active Tic Tac Toe games:")
                     for gameid, game in self.tictactoe_games.items():
-                        lsnp_logger.info(f"- Game ID: {gameid}, Opponent: {game['opponent']}, "
+                        self.lsnp_logger.info(f"- Game ID: {gameid}, Opponent: {game['opponent']}, "
                                          f"Symbol: {game['my_symbol']}, Turn: {game['turn']}")
             elif cmd.startswith("tictactoe invite "):
                 parts = cmd.split(" ")
                 if len(parts) != 4:
-                    lsnp_logger.info("Usage: tictactoe invite <user> <X|O>")
+                    self.lsnp_logger.info("Usage: tictactoe invite <user> <X|O>")
                 else:
                     _, _, user, symbol = parts
                     self.send_tictactoe_invite(user, symbol)
@@ -2000,7 +2011,7 @@ class LSNPController:
             elif cmd.startswith("tictactoe move "):
                 parts = cmd.split(" ")
                 if len(parts) != 4:
-                    lsnp_logger.info("Usage: tictactoe move <gameid> <position 0-8>")
+                    self.lsnp_logger.info("Usage: tictactoe move <gameid> <position 0-8>")
                 else:
                     _, _, gameid, pos = parts
                     self.send_tictactoe_move(gameid, int(pos))
@@ -2008,7 +2019,7 @@ class LSNPController:
             elif cmd.startswith("tictactoe forfeit "):
                 parts = cmd.split(" ")
                 if len(parts) != 3:
-                    lsnp_logger.info("Usage: tictactoe forfeit <gameid>")
+                    self.lsnp_logger.info("Usage: tictactoe forfeit <gameid>")
                 else:
                     _, _, gameid = parts
                     self.forfeit_tictactoe(gameid)
@@ -2016,22 +2027,22 @@ class LSNPController:
                 self.send_ping()
             elif cmd == "verbose":
                 self.verbose = not self.verbose
-                lsnp_logger.info(f"Verbose mode {'on' if self.verbose else 'off'}")
+                self.lsnp_logger.info(f"Verbose mode {'on' if self.verbose else 'off'}")
             elif cmd == "ipstats":
                 self.show_ip_stats()
             elif cmd == "quit":
                 break 
             else:
-              lsnp_logger.warning("Unknown command. Type 'help' for available commands.")
+              self.lsnp_logger.warning("Unknown command. Type 'help' for available commands.")
         except KeyboardInterrupt:
           break
         except Exception as e:
-          lsnp_logger.error(f"Error: {e}")
+          self.lsnp_logger.error(f"Error: {e}")
 
       self.zeroconf.close()
       if cmd != "quit": print("") # For better looks
 
       stats = self.ip_tracker.get_ip_stats()
-      lsnp_logger.info(f"Session totals - IPs: {stats['total_known_ips']}, "
+      self.lsnp_logger.info(f"Session totals - IPs: {stats['total_known_ips']}, "
                     f"Connections: {stats['total_connection_attempts']}")	
-      lsnp_logger.critical("Peer terminated.")
+      self.lsnp_logger.critical("Peer terminated.")
