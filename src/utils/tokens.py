@@ -1,12 +1,13 @@
 import time
 from ..config.config import *
+import src.manager.state as state 
 
 # --- Token Management ---
 token_blacklist = {}
 
 def generate_token(user_id: str, scope: str = "chat", ttl: int = TOKEN_TTL) -> str:
     timestamp = int(time.time())
-    return f"{user_id}|{timestamp}|{scope}"
+    return f"{user_id}|{timestamp + state.ttl}|{scope}"
 
 def validate_token(token: str, required_scope: str = "chat") -> bool:
     if token in token_blacklist:
