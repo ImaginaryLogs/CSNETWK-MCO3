@@ -61,6 +61,16 @@ def make_follow_message(from_id: str, to_id: str, message_id: str, token: str):
         "TIMESTAMP": int(time.time()),
         "TOKEN": token
     })
+    
+def make_unfollow_message(from_id: str, to_id: str, message_id: str, token: str):
+    return format_kv_message({
+        "TYPE": "UNFOLLOW",
+        "MESSAGE_ID": message_id,
+        "FROM": from_id,
+        "TO": to_id,
+        "TIMESTAMP": int(time.time()),
+        "TOKEN": token
+    })
 
 def make_group_create_message(from_user_id: str, group_id: str, group_name: str, members: list[str], token: str):
     return format_kv_message({
@@ -125,4 +135,46 @@ def make_group_message(from_user_id: str, group_id: str, message_id: str, conten
         "CONTENT": content,
         "TIMESTAMP": int(time.time()),
         "TOKEN": token
+    })
+
+
+def make_tictaceto_invite_message(from_user_id: str, to_user_id: str, game_id: str, msg_id: str, symbol: str, timestamp: int, token: str):
+    return format_kv_message({
+        "TYPE": "TICTACTOE_INVITE",
+        "FROM": from_user_id,
+        "TO": to_user_id,
+        "GAMEID": game_id,
+        "MESSAGE_ID": msg_id,
+        "SYMBOL": symbol,
+        "TIMESTAMP": timestamp,
+        "TOKEN": token
+    })
+
+def make_tictactoe_move_message(from_user_id: str, to_user_id: str, gameid: str, message_id: str, symbol: str, position: int, turn:str, token: str):
+    return format_kv_message({
+        "TYPE": "TICTACTOE_MOVE",
+        "FROM": from_user_id,
+        "TO": to_user_id,
+        "GAMEID": gameid,
+        "MESSAGE_ID": message_id,
+        "POSITION": position,
+        "SYMBOL": symbol,
+        "TURN": turn,
+        "TIMESTAMP": int(time.time()),
+        "TOKEN": token
+    })
+
+def make_tictactoe_result_message(from_id: str, to_id: str, gameid: str, result: str, symbol: str, win_line_str: str, message_id: str, timestamp: int, token: str):
+    """Formats a Tic Tac Toe result message for sending over the network."""
+    return format_kv_message({
+          "TYPE": "TICTACTOE_RESULT",
+          "FROM": from_id,
+          "TO" : to_id,
+          "GAMEID": gameid,
+          "MESSAGE_ID": message_id,
+          "RESULT": result,
+          "SYMBOL": symbol,
+          "WINNING_LINE": win_line_str,
+          "TIMESTAMP": timestamp,
+          "TOKEN": token
     })
