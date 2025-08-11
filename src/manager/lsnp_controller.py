@@ -104,7 +104,7 @@ class LSNPController:
 
       self.file_response_events: Dict[str, threading.Event] = {}
       self.file_responses: Dict[str, str] = {}
-
+      self.revoked_tokens: Set[str] = set()
       self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
       self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1) # Enables broadcasting
       self.socket.bind(("", self.port))
@@ -201,9 +201,46 @@ class LSNPController:
                 if self.verbose:
                     lsnp_logger.info(f"[ERROR] Malformed message from {addr}: {e}")
 
+    def send_revoke(self, token: str, recipient_id: str):
+        if recipient_id not in self.peer_map:
+            lsnp_logger.error(f"[REVOKE FAILED] Peer {recipient_id} not found.")
+            return
+        peer = self.peer_map[recipient_id]
+        msg = f"TYPE: REVOKE\nTOKEN: {token}\n"
+        try:
+            self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+            lsnp_logger.info(f"[REVOKE SENT] Token revoked for {recipient_id}")
+        except Exception as e:
+            lsnp_logger.error(f"[REVOKE ERROR] {e}")
+    
+    def is_token_revoked(self, token: str) -> bool:
+        return token in self.revoked_tokens
+
+    def revoke_token(self, token: str):
+        self.revoked_tokens.add(token)
+        lsnp_logger.info(f"[TOKEN REVOKED] {token}")
+    
     def _handle_kv_message(self, kv: dict, addr: Tuple[str, int]):
         msg_type = kv.get("TYPE")
         sender_ip, sender_port = addr
+
+        from_id = kv.get("FROM") or kv.get("USER_ID")
+        if from_id and "@" in from_id:
+            from_ip = from_id.split("@")[-1]
+            if from_ip != sender_ip:
+                lsnp_logger.warning(f"[SECURITY] Message FROM field IP {from_ip} does not match sender IP {sender_ip}. Message dropped.")
+                return
+            
+        token = kv.get("TOKEN")
+        if token and self.is_token_revoked(token):
+            lsnp_logger.warning(f"[SECURITY] Revoked token used: {token}. Message dropped.")
+            return
+
+        if msg_type == "REVOKE":
+            token_to_revoke = kv.get("TOKEN")
+            if token_to_revoke:
+                self.revoke_token(token_to_revoke)
+            return
 
         if msg_type == "PROFILE":
             from_id = kv.get("USER_ID", "")
