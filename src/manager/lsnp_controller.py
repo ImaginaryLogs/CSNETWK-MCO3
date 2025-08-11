@@ -631,7 +631,7 @@ class LSNPController:
             token = generate_token(self.full_user_id, "file")
             response_event = threading.Event()
             self.file_response_events[file_id] = response_event
-            self.file_responses[file_id] = None
+            self.file_responses[file_id] = ""
             
             # Calculate chunks
             total_chunks = math.ceil(filesize / MAX_CHUNK_SIZE)
