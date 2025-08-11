@@ -74,7 +74,6 @@ class FileTransfer:
         
         return assembled
 
-
 class Group:
     def __init__(self, group_id: str, group_name: str, owner_id: str, members: List[str]):
         self.group_id: str = group_id
@@ -260,9 +259,6 @@ class LSNPController:
             return
 
         if msg_type == "PROFILE":
-            
-            
-            
             from_id = kv.get("USER_ID", "")
             display_name = kv.get("DISPLAY_NAME", "")
             avatar_data = kv.get("AVATAR_DATA")
@@ -1852,7 +1848,11 @@ class LSNPController:
                         lsnp_logger.info(f"No group exists.")
                         continue
                     if parts[1] == "list":
-                        # ...existing group list logic...
+                        lsnp_logger.info(f"Group Name: {self.groups[group_index].group_name}")
+                        lsnp_logger.info(f"Group Owner: {self.groups[group_index].owner_id}")
+                        lsnp_logger.info(f"Group Members:")
+                        for member in self.groups[group_index].members:
+                            lsnp_logger.info(f"{member}")
                         continue
                     if len(parts) != 4:
                         lsnp_logger.info("Usage: group <cmd> <name> <args>")
@@ -1860,6 +1860,7 @@ class LSNPController:
                     _, grp_cmd, grp_name, args = parts
                     if grp_cmd == "create":
                         self.group_create(grp_name, args)
+                        
                     elif grp_cmd == "add":
                         if self.groups[group_index].owner_id != self.full_user_id:
                             lsnp_logger.info("No permission to manage group.")
