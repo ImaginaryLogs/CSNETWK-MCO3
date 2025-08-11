@@ -408,9 +408,12 @@ class LSNPController:
             gameid = kv.get("GAMEID")
             result = kv.get("RESULT")
             line = kv.get("WINNING_LINE", "")
-            print(f"Game {gameid} result: {result}")
+            lsnp_logger.info(f"Game {gameid} result: {result}")
+            lsnp_logger.info(f"Winning line: {line}")
             self.gamemanager._print_ttt_board(self.tictactoe_games[gameid]["board"])
+            
             self.tictactoe_games[gameid]["active"] = False
+            del self.tictactoe_games[gameid]
 
     def _handle_file_offer(self, kv: dict, addr: Tuple[str, int]):
         from_id = kv.get("FROM", "")
