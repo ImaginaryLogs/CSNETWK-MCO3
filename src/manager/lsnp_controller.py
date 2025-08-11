@@ -266,10 +266,10 @@ class LSNPController:
                 self._send_ack(message_id, addr)
 
         elif msg_type == "UNFOLLOW":
-            from_id = kv.get("USER_ID", "")
-            display_name = kv.get("DISPLAY_NAME", "")
+            from_id = kv.get("FROM", "")
             message_id = kv.get("MESSAGE_ID", "")
-            lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) has unfollowed you.")
+            display_name = from_id.split('@')[0]
+            lsnp_logger.info(f"[NOTIFY] {display_name} has unfollowed you.")
             self.inbox.append(f"User {display_name} unfollowed you.")
             self._send_ack(message_id, addr)
         
