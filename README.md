@@ -88,23 +88,23 @@ When performing Milestone Tracking and Deliverables, it is being done in the [Ka
 | mDNS Discovery Integration              |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | IP Address Logging                      |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | **Core Feature Implementation**         |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
-| Core Messaging (POST, DM, LIKE, FOLLOW) |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Core Messaging (POST, DM, LIKE, FOLLOW) | Clarence Ivan Ang                                                                                                                                                                          |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | File Transfer (Offer, Chunk, ACK)       |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | Tic Tac Toe Game (with recovery)        |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | Group Creation / Messaging              |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | Induced Packet Loss (Game & File)       |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | Acknowledgement / Retry                 |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | **UI & Logging**                        |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
-| Verbose Mode Support                    |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Verbose Mode Support                    | Clarence Ivan Ang                                                                                                                                                                          |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | Terminal Grid Display                   |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
-| Message Parsing & Debug Output          |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Message Parsing & Debug Output          | Clarence Ivan Ang                                                                                                                                                                          |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | **Testing and Validation**              |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | Inter-group Testing                     |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
-| Correct Parsing Validation              |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Correct Parsing Validation              | Clarence Ivan Ang                                                                                                                                                                          |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | Token Expiry & IP Match                 |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 | **Documentation & Coordination**        |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
-| RFC & Project Report                    |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
-| Milestone Tracking & Deliverables       |                                                                                                                                                                                            |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| RFC & Project Report                    | Clarence Ivan Ang                                                                                                                                                                          |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
+| Milestone Tracking & Deliverables       | Clarence Ivan Ang                                                                                                                                                                          |                                                                                                                                                                                                             |                                                                                                                                                                                                              |                                                                                                                                                                                      |
 
 ## Disclaimer
 
@@ -711,7 +711,6 @@ The controller provides an interactive command-line interface:
 - **Connection Monitoring** - Tracks failed connection attempts and suspicious activity
 - **Graceful Degradation** - Continues operation despite individual peer failures
 
-
 # File Transfer System
 
 The LSNP file transfer system provides reliable peer-to-peer file sharing capabilities with chunked transmission, acknowledgment handling, and progress tracking. The system handles files of any size by breaking them into manageable chunks and reassembling them on the recipient side.
@@ -734,6 +733,7 @@ The LSNP file transfer system provides reliable peer-to-peer file sharing capabi
 Manages individual file transfer sessions with complete state tracking.
 
 #### Data Structure
+
 ```python
 class FileTransfer:
     file_id: str              # Unique identifier for this transfer
@@ -794,6 +794,7 @@ class FileTransfer:
 Initiates a file transfer by offering a file to a recipient.
 
 **Format:**
+
 ```
 TYPE: FILE_OFFER
 FROM: sender_user_id@ip
@@ -812,6 +813,7 @@ TOKEN: cryptographic_token
 Recipient's response to a file offer.
 
 **Format:**
+
 ```
 TYPE: FILE_ACCEPT  # or FILE_REJECT
 FROM: recipient_user_id@ip
@@ -826,6 +828,7 @@ TIMESTAMP: unix_timestamp
 Contains individual file chunks during transmission.
 
 **Format:**
+
 ```
 TYPE: FILE_CHUNK
 FROM: sender_user_id@ip
@@ -843,6 +846,7 @@ DATA: base64_encoded_chunk_data
 Confirmation that file transfer has completed successfully.
 
 **Format:**
+
 ```
 TYPE: FILE_RECEIVED
 FROM: recipient_user_id@ip
@@ -867,11 +871,13 @@ TIMESTAMP: unix_timestamp
    > - `description` - Optional description of the file
    >
    > **File Path Resolution:**
+   >
    > - Absolute paths used directly
    > - Relative paths first checked in `/files/` directory
    > - Falls back to project root if not found in `/files/`
    >
    > **Process Flow:**
+   >
    > 1. Validates recipient exists in peer map
    > 2. Resolves and validates file path
    > 3. Generates unique file ID and metadata
@@ -885,6 +891,7 @@ TIMESTAMP: unix_timestamp
    > Determines MIME type based on file extension.
    >
    > **Supported Types:**
+   >
    > - `.txt` → `text/plain`
    > - `.jpg/.jpeg` → `image/jpeg`
    > - `.png` → `image/png`
@@ -906,6 +913,7 @@ TIMESTAMP: unix_timestamp
    > - `file_id` - Unique identifier of the file offer to accept
    >
    > **Behavior:**
+   >
    > - Validates file offer exists in pending offers
    > - Moves transfer from pending to active transfers
    > - Sends FILE_ACCEPT message to sender
@@ -920,6 +928,7 @@ TIMESTAMP: unix_timestamp
    > - `file_id` - Unique identifier of the file offer to reject
    >
    > **Behavior:**
+   >
    > - Validates file offer exists
    > - Sends FILE_REJECT message to sender
    > - Removes offer from pending list
@@ -968,11 +977,13 @@ project_root/
    > Processes incoming FILE_OFFER messages.
    >
    > **Validation Steps:**
+   >
    > - Verifies message is addressed to this peer
    > - Validates cryptographic token
    > - Extracts file metadata (name, size, type, ID, description)
    >
    > **Behavior:**
+   >
    > - Calculates required chunk count
    > - Creates FileTransfer object in pending offers
    > - Displays offer notification to user
@@ -985,10 +996,12 @@ project_root/
    > Processes incoming FILE_CHUNK messages during active transfers.
    >
    > **Validation:**
+   >
    > - Verifies message addressing and token
    > - Confirms active transfer exists for file ID
    >
    > **Process:**
+   >
    > - Decodes base64 chunk data
    > - Adds chunk to transfer object
    > - Updates progress tracking
@@ -1001,6 +1014,7 @@ project_root/
    > Handles completion of file transfers and saves files to disk.
    >
    > **Process:**
+   >
    > - Assembles all chunks into complete file data
    > - Creates user-specific download directory
    > - Saves file with original filename
