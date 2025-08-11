@@ -73,6 +73,7 @@ class LSNPController:
         self.user_id = user_id
         self.display_name = display_name
         self.port = port
+        self.avatar_path = avatar_path
         self.verbose = verbose
         self.ip = self._get_own_ip()
         self.full_user_id = f"{self.user_id}@{self.ip}"
@@ -133,27 +134,27 @@ class LSNPController:
             s.close()
 
     def _register_mdns(self):
-        info = ServiceInfo(
-            MDNS_SERVICE_TYPE,
-            f"{self.user_id}_at_{self.ip.replace('.', '_')}.{MDNS_SERVICE_TYPE}",
-            addresses=[socket.inet_aton(self.ip)],
-            port=self.port,
-            properties={
-                "user_id": self.user_id,
-                "display_name": self.display_name
-            }
-        )
-        self.zeroconf.register_service(info)
-        if self.verbose:
-            lsnp_logger_v.info(f"[mDNS] Registered: {info.name}")
+      info = ServiceInfo(
+        MDNS_SERVICE_TYPE,
+        f"{self.user_id}_at_{self.ip.replace('.', '_')}.{MDNS_SERVICE_TYPE}",
+        addresses=[socket.inet_aton(self.ip)],
+        port=self.port,
+        properties={
+          "user_id": self.user_id,
+          "display_name": self.display_name
+        }
+      )
+      self.zeroconf.register_service(info)
+      if self.verbose:
+        lsnp_logger_v.info(f"[mDNS] Registered: {info.name}")
 
     def _start_threads(self):
-        threading.Thread(target=self._listen, daemon=True).start()
-        listener = PeerListener(self.peer_map, self._on_peer_discovered)
-        ServiceBrowser(self.zeroconf, MDNS_SERVICE_TYPE, listener)
-        threading.Thread(target=self._periodic_profile_broadcast, daemon=True).start()
-        if self.verbose:
-            lsnp_logger_v.info("[mDNS] Discovery started")
+      threading.Thread(target=self._listen, daemon=True).start()
+      listener = PeerListener(self.peer_map, self._on_peer_discovered)
+      ServiceBrowser(self.zeroconf, MDNS_SERVICE_TYPE, listener)
+      threading.Thread(target=self._periodic_tasks, daemon=True).start()
+      if self.verbose:
+        lsnp_logger_v.info("[mDNS] Discovery started")
 
     def _listen(self):
         while True:
@@ -187,31 +188,44 @@ class LSNPController:
         msg_type = kv.get("TYPE")
         sender_ip, sender_port = addr
 
-        
-        if msg_type == "PROFILE":
-            from_id = kv.get("USER_ID", "")
-            display_name = kv.get("DISPLAY_NAME", "")
-            ip = addr[0]
-            port = addr[1]
+
+		
+		if msg_type == "PROFILE":
+			from_id = kv.get("USER_ID", "")
+			display_name = kv.get("DISPLAY_NAME", "")
+			avatar_data = kv.get("AVATAR_DATA")
+			avatar_type = kv.get("AVATAR_TYPE")
+
+			ip = addr[0]
+			port = addr[1]
+
 
             self.ip_tracker.log_new_ip(sender_ip, from_id, "profile_message")
-
             if from_id not in self.peer_map:
                 peer = Peer(from_id, display_name, ip, port)
+                peer.avatar_data = avatar_data
+                peer.avatar_type = avatar_type
                 self.peer_map[from_id] = peer
-                
-                if self.verbose:
-                    lsnp_logger_v.info(f"[PROFILE] {display_name} ({from_id}) joined from {ip}")
+            else:
+                # Update existing peer
+                self.peer_map[from_id].display_name = display_name
+                self.peer_map[from_id].avatar_data = avatar_data
+                self.peer_map[from_id].avatar_type = avatar_type
+
+            if self.verbose:
+                lsnp_logger_v.info(f"[PROFILE] {display_name} ({from_id}) joined from {ip}")
+		
+		
         
         elif msg_type == "DM":
-            from_id = kv.get("FROM", "")
-            to_id = kv.get("TO", "")
-            token = kv.get("TOKEN", "")
-            
-            # Verify this message is for us
-            if to_id != self.full_user_id:
-                if self.verbose:
-                    lsnp_logger_v.info(f"[DM IGNORED] Not for us: {to_id}")
+          from_id = kv.get("FROM", "")
+          to_id = kv.get("TO", "")
+          token = kv.get("TOKEN", "")
+
+          # Verify this message is for us
+          if to_id != self.full_user_id:
+            if self.verbose:
+              lsnp_logger_v.info(f"[DM IGNORED] Not for us: {to_id}")
                 return
             
             if not validate_token(token, "chat"):
@@ -986,6 +1000,44 @@ class LSNPController:
 
 		lsnp_logger.error(f"[UNFOLLOW FAILED] Could not send to {peer.display_name} at {peer.ip}")
 		del self.ack_events[message_id]
+
+
+	def broadcast_profile(self):
+		# Build the PROFILE message
+		msg = make_profile_message(self.display_name, self.full_user_id, self.avatar_path)
+  
+		preview = None
+		if self.avatar_path and os.path.isfile(self.avatar_path):
+			try:
+				with open(self.avatar_path, "rb") as img_file:
+						avatar_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+				preview = avatar_base64[:20] + "..." if len(avatar_base64) > 20 else avatar_base64
+			except Exception as e:
+						lsnp_logger.error(f"[DEBUG] Failed to generate avatar preview: {e}")
+            
+
+			# Log the message but without showing full AVATAR_DATA
+		safe_log_msg = msg
+		if "AVATAR_DATA" in safe_log_msg:
+				# Replace the full avatar data with a placeholder in the log
+				safe_log_msg = safe_log_msg.replace(
+						msg.split("AVATAR_DATA: ")[1].split("\n", 1)[0],
+						preview if preview else "[hidden]"
+				)
+
+		# lsnp_logger.info(f"[DEBUG] PROFILE message to send:\n{safe_log_msg}")
+        
+		# Broadcast to the subnet
+		broadcast_addr = self.ip.rsplit('.', 1)[0] + '.255'
+
+		try:
+				self.socket.sendto(msg.encode(), (broadcast_addr, self.port))
+				lsnp_logger.info(f"[PROFILE BROADCAST] Sent to {broadcast_addr}:{self.port}")
+		except Exception as e:
+				lsnp_logger.error(f"[BROADCAST FAILED] {e}")
+
+		if self.verbose:
+				lsnp_logger_v.info("[BROADCAST] Profile message sent.")
 
 	def send_post(self, content: str):
 		if not self.followers:
