@@ -169,7 +169,7 @@ class LSNPController:
                 raw = data.decode()
                 data_size = len(data)
                 if self.verbose:
-                    lsnp_logger_v.info(f"[RECV] From {addr}: \n{raw[:100]}{'...' if len(raw) > 100 else ''}")
+                  lsnp_logger_v.info(f"[RECV] From {addr}: \n{raw[:100]}{'...' if len(raw) > 100 else ''}")
                 
                 # All messages should be in key-value format now
                 if "TYPE: " in raw:
@@ -189,8 +189,6 @@ class LSNPController:
         msg_type = kv.get("TYPE")
         sender_ip, sender_port = addr
 
-
-    
         if msg_type == "PROFILE":
           from_id = kv.get("USER_ID", "")
           display_name = kv.get("DISPLAY_NAME", "")
@@ -224,36 +222,40 @@ class LSNPController:
           token = kv.get("TOKEN", "")
 
           # Verify this message is for us
+          if self.verbose:
+            lsnp_logger.info(f"[DM] Received from ${from_id} to ${to_id}")
           if to_id != self.full_user_id:
             if self.verbose:
               lsnp_logger_v.info(f"[DM IGNORED] Not for us: {to_id}")
               return
             
-            if not validate_token(token, "chat"):
-                if self.verbose:
-                    lsnp_logger_v.info(f"[DM REJECTED] Invalid token from {from_id}")
-                return
-            
-            content = kv.get("CONTENT", "")
-            message_id = kv.get("MESSAGE_ID", "")
-            timestamp = kv.get("TIMESTAMP", "")
-            
-            # Get display name for prettier output
-            display_name = from_id.split('@')[0]  # Default to username part
-            
-            # Check if it's from ourselves
-            if from_id == self.full_user_id:
-                display_name = self.display_name
-            else:
-                # Look up in peer_map for other peers
-                for peer in self.peer_map.values():
-                    if peer.user_id == from_id:
-                        display_name = peer.display_name
-                        break
-            
+          if not validate_token(token, "chat"):
+              if self.verbose:
+                  lsnp_logger_v.info(f"[DM REJECTED] Invalid token from {from_id}")
+              return
+          
+          content = kv.get("CONTENT", "")
+          message_id = kv.get("MESSAGE_ID", "")
+          timestamp = kv.get("TIMESTAMP", "")
+          
+          # Get display name for prettier output
+          display_name = from_id.split('@')[0]  # Default to username part
+          if self.verbose:
             lsnp_logger.info(f"{display_name}: {content}")
-            self.inbox.append(f"[{timestamp}] {display_name}: {content}")
-            self._send_ack(message_id, addr)
+          # Check if it's from ourselves
+          if from_id == self.full_user_id:
+              display_name = self.display_name
+          else:
+              # Look up in peer_map for other peers
+              for peer in self.peer_map.values():
+                  if peer.user_id == from_id:
+                      display_name = peer.display_name
+                      break
+          
+          lsnp_logger.info(f"{display_name}: {content}")
+          self.inbox.append(f"[{timestamp}] {display_name}: {content}")
+          lsnp_logger.debug(f"Send Ack")
+          self._send_ack(message_id, addr)
   
         elif msg_type == "FOLLOW":
             from_id = kv.get("FROM", "")
@@ -780,7 +782,9 @@ class LSNPController:
         if recipient_id not in self.peer_map:
             lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
             return
-
+        if self.verbose: 
+          lsnp_logger.info(f"[DM SEND] to {recipient_id}: {content}")
+        
         peer = self.peer_map[recipient_id]
         message_id = str(uuid.uuid4())
         token = generate_token(self.full_user_id, "chat")
