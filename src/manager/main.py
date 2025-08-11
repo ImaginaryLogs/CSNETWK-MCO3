@@ -10,7 +10,7 @@ STARTER_CODENAME='STARTER'
 
 server_logger = logger.get_logger(f'[{STARTER_CODENAME}]')
 verbose_logger = logger.get_logger(f'[{STARTER_CODENAME}] |:', False)
-
+avatar_path = 'client'
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))  # -> src/manager
 DEFAULT_IMAGE_DIR = os.path.join(CURRENT_DIR, "..", "utils", "images")
 
