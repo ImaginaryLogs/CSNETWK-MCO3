@@ -6,8 +6,10 @@ import uuid
 import base64
 import os
 import math
+import shlex
 from typing import Dict, List, Callable, Tuple, Optional, Set
 from zeroconf import Zeroconf, ServiceInfo, ServiceBrowser, ServiceListener
+from src.protocol.types.messages.message_formats import *
 from src.ui import logging
 from src.config import *
 from src.protocol import *
@@ -70,6 +72,15 @@ class FileTransfer:
         
         return assembled
 
+
+class Group:
+    def __init__(self, group_id: str, group_name: str, owner_id: str, members: List[str]):
+        self.group_id: str = group_id
+        self.group_name: str = group_name
+        self.owner_id: str = owner_id
+        self.members: List[str] = members
+        self.created_at: str = str(int(time.time()))
+
 class LSNPController:
     def __init__(self, user_id: str, display_name: str, port: int = LSNP_PORT, verbose: bool = True, avatar_path: str|None=""):
       self.user_id = user_id
@@ -81,6 +92,8 @@ class LSNPController:
       self.full_user_id = f"{self.user_id}@{self.ip}"
       self.peer_map: Dict[str, Peer] = {}
       self.inbox: List[str] = []
+      
+      self.groups: List[Group] = []
       self.followers: List[str] = []
       self.ack_events: Dict[str, threading.Event] = {}
       self.project_root = self._get_project_root()
@@ -414,6 +427,132 @@ class LSNPController:
             
             self.tictactoe_games[gameid]["active"] = False
             del self.tictactoe_games[gameid]
+
+        elif msg_type == "GROUP_CREATE":
+            from_id: str = kv.get("FROM", "")
+            group_id: str = kv.get("GROUP_ID", "")
+            group_name: str = kv.get("GROUP_NAME", "")
+            members: str = kv.get("MEMBERS", "")
+            token: str = kv.get("TOKEN", "")
+
+            parts = members.split(",")
+
+            if self.full_user_id not in parts:
+                return
+            
+            if not validate_token(token, "group"):
+                if self.verbose:
+                    lsnp_logger.info(f"[GROUP_CREATE REJECTED] Invalid token from {from_id}")
+                return
+            
+            group = Group(group_id, group_name, from_id, parts)
+            self.groups.append(group)
+
+            lsnp_logger.info(f"[GROUP_CREATE] You've been added to \"{group_name}\"")
+            if self.verbose:
+                lsnp_logger.info(f"[GROUP_CREATE] Owner: {from_id}")
+                lsnp_logger.info(f"[GROUP_CREATE] Members: {members}")
+
+        elif msg_type == "GROUP_ADD":
+            from_id: str = kv.get("FROM", "")
+            group_id: str = kv.get("GROUP_ID", "")
+            group_name: str = kv.get("GROUP_NAME", "")
+            add: str = kv.get("ADD", "")
+            members: str = kv.get("MEMBERS", "")
+            token: str = kv.get("TOKEN", "")
+
+            add_parts = add.split(",")
+            member_parts = members.split(",")
+
+            if self.full_user_id not in member_parts:
+                return
+                            
+            if not validate_token(token, "group"):
+                if self.verbose:
+                    lsnp_logger.info(f"[GROUP_ADD REJECTED] Invalid token from {from_id}")
+                return
+
+            if self.full_user_id in add_parts:
+                group = Group(group_id, group_name, from_id, member_parts)
+                self.groups.append(group)
+                lsnp_logger.info(f"[GROUP_ADD] You've been added to \"{group_name}\"")
+            else:
+                group_index = -1
+                for index, group in enumerate(self.groups):
+                    if group.group_id == group_id:
+                        group_index = index
+                        break
+                self.groups[group_index].members = member_parts
+                lsnp_logger.info(f"[GROUP_ADD] The group \"{self.groups[group_index].group_name}\" member list was updated.")
+            if self.verbose:
+                lsnp_logger.info(f"[GROUP_ADD] Owner: {from_id}")
+                lsnp_logger.info(f"[GROUP_ADD] Members: {members}")
+
+        elif msg_type == "GROUP_REMOVE":
+            from_id: str = kv.get("FROM", "")
+            group_id: str = kv.get("GROUP_ID", "")
+            remove: str = kv.get("REMOVE", "")
+            token: str = kv.get("TOKEN", "")
+
+            remove_parts = remove.split(",")
+
+            group_index = -1
+            for index, group in enumerate(self.groups):
+                if group.group_id == group_id:
+                    group_index = index
+                    break
+
+            if group_index == -1:
+                return
+
+            if self.full_user_id not in self.groups[group_index].members:
+                return
+            
+            if not validate_token(token, "group"):
+                if self.verbose:
+                    lsnp_logger.info(f"[GROUP_REMOVE REJECTED] Invalid token from {from_id}")
+                return
+            
+            if self.full_user_id in remove_parts:
+                lsnp_logger.info(f"[GROUP_REMOVE] You've been removed from \"{self.groups[group_index].group_name}\"")
+                self.groups.pop(group_index)
+            else:
+                for member in remove_parts:
+                    self.groups[group_index].members.remove(member)
+                lsnp_logger.info(f"[GROUP_REMOVE] The group \"{self.groups[group_index].group_name}\" member list was updated.")
+            
+            if self.verbose:
+                members_str = ""
+                for member in self.groups[group_index].members:
+                    members_str = members_str + ","
+                members_str = members_str[:-1]
+                lsnp_logger.info(f"[GROUP_REMOVE] Owner: {from_id}")
+                lsnp_logger.info(f"[GROUP_REMOVE] Members: {members}")
+
+        elif msg_type == "GROUP_MESSAGE":
+            from_id = kv.get("FROM", "")
+            group_id: str = kv.get("GROUP_ID", "")
+            content = kv.get("CONTENT", "")
+            message_id = kv.get("MESSAGE_ID", "")
+            token = kv.get("TOKEN", "")
+
+            group_index = -1
+            for index, group in enumerate(self.groups):
+                if group.group_id == group_id:
+                    group_index = index
+                    break
+            
+            if group_index == -1:
+                return
+            
+            if not validate_token(token, "group"):
+                if self.verbose:
+                    lsnp_logger.info(f"[GROUP MESSAGE REJECTED] Invalid token from {from_id}")
+                return
+            
+            lsnp_logger.info(f"[\"{self.groups[group_index].group_name}\"] {from_id}: {content}")
+            self._send_ack(message_id, addr)
+
 
     def _handle_file_offer(self, kv: dict, addr: Tuple[str, int]):
         from_id = kv.get("FROM", "")
@@ -876,7 +1015,24 @@ class LSNPController:
 
         lsnp_logger.error(f"[FAILED] DM to {peer.display_name} at {peer.ip}")
         del self.ack_events[message_id]
-      
+
+    def play_tictactoe(self, recipient_id: str):
+        # Accept both formats: "user" or "user@ip"
+        if "@" not in recipient_id:
+            # Find the full user_id in peer_map
+            full_recipient_id = None
+            for user_id in self.peer_map:
+                if user_id.startswith(f"{recipient_id}@"):
+                    full_recipient_id = user_id
+                    break
+            if not full_recipient_id:
+                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                return
+            recipient_id = full_recipient_id
+
+        if recipient_id not in self.peer_map:
+            lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+            return
 
     def _periodic_profile_broadcast(self):
         while True:
@@ -910,6 +1066,225 @@ class LSNPController:
             # Show both short and full format
             short_id = peer.user_id.split('@')[0]
             lsnp_logger.info(f"- {peer.display_name} ({short_id}) at {peer.ip}: {peer.port}")
+
+    def group_create(self, group_name: str, members: str):
+        parts = members.split(",")
+
+        for i, recipient_id in enumerate(parts):
+            if "@" not in recipient_id:
+                # Find the full user_id in peer_map
+                full_recipient_id = None
+                for user_id in self.peer_map:
+                    if user_id.startswith(f"{recipient_id}@"):
+                        full_recipient_id = user_id
+                        break
+                if not full_recipient_id:
+                    lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                    return
+                parts[i] = full_recipient_id
+
+            if parts[i] not in self.peer_map:
+                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                return
+
+        group_id = str(uuid.uuid4())
+        group = Group(group_id, group_name, self.full_user_id, parts)
+        token = generate_token(self.full_user_id, "group")
+        self.groups.append(group)
+
+        msg = make_group_create_message(
+            from_user_id = self.full_user_id,
+            group_id = group.group_id, 
+            group_name = group.group_name, 
+            members = parts, 
+            token = token
+        )
+
+        for member in parts:
+            peer = self.peer_map[member]
+            try:
+                self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+                lsnp_logger.info(f"[GROUP_CREATE] Added member {peer.ip}:{peer.port}")
+            except Exception as e:
+                lsnp_logger.error("[GROUP_CREATE] FAILED: To add {peer.ip} - {e}")
+
+        lsnp_logger.info(f"GROUP CREATE: Group \"{group.group_name}\" successfully created.")
+    
+        if self.verbose:
+            lsnp_logger.info(f"[GROUP_CREATE] Group created with {len(group.members) + 1} members.")
+
+    def group_add(self, group_index: int, members: str):
+        parts = members.split(",")
+
+        for i, recipient_id in enumerate(parts):
+            if "@" not in recipient_id:
+                # Find the full user_id in peer_map
+                full_recipient_id = None
+                for user_id in self.peer_map:
+                    if user_id.startswith(f"{recipient_id}@"):
+                        full_recipient_id = user_id
+                        break
+                if not full_recipient_id:
+                    lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                    return
+                parts[i] = full_recipient_id
+
+            if parts[i] not in self.peer_map:
+                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                return
+        
+        for member in parts:
+            self.groups[group_index].members.append(member)
+        token = generate_token(self.full_user_id, "group")
+
+        members_str = ""
+        add_str = ""
+        for member in self.groups[group_index].members:
+            members_str = members_str + member + ","
+        for member in parts:
+            add_str = add_str + member + ","
+        members_str = members_str[:-1]
+        add_str = add_str[:-1]
+
+        msg = make_group_add_message(
+            from_user_id = self.full_user_id,
+            group_id = self.groups[group_index].group_id,
+            group_name = self.groups[group_index].group_name,
+            add = add_str, 
+            members = members_str,
+            token = token
+        )
+
+        for member in self.groups[group_index].members:
+            peer = self.peer_map[member]
+            try:
+                self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+                if member in parts:
+                    lsnp_logger.info(f"[GROUP_ADD] Added member {peer.ip}:{peer.port}")
+            except Exception as e:
+                lsnp_logger.error("[GROUP_ADD] FAILED: To add {peer.ip} - {e}")
+
+        lsnp_logger.info(f"GROUP ADD: Group \"{self.groups[group_index].group_name}\" successfully added {len(parts)} member(s).")
+    
+        if self.verbose:
+            lsnp_logger.info(f"[GROUP_ADD] Group now contains {len(self.groups[group_index].members) + 1} members.")
+
+    def group_remove(self, group_index: int, members: str):
+        parts = members.split(",")
+
+        for i, recipient_id in enumerate(parts):
+            if "@" not in recipient_id:
+                # Find the full user_id in peer_map
+                full_recipient_id = None
+                for user_id in self.peer_map:
+                    if user_id.startswith(f"{recipient_id}@"):
+                        full_recipient_id = user_id
+                        break
+                if not full_recipient_id:
+                    lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                    return
+                parts[i] = full_recipient_id
+
+            if parts[i] not in self.peer_map:
+                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                return
+        
+        for member in parts:
+            self.groups[group_index].members.remove(member)
+        token = generate_token(self.full_user_id, "group")
+
+        remove_str = ""
+        for member in parts:
+            remove_str = remove_str + member + ","
+        remove_str = remove_str[:-1]
+
+        msg = make_group_remove_message(
+            from_user_id = self.full_user_id,
+            group_id = self.groups[group_index].group_id,
+            remove = remove_str, 
+            token = token
+        )
+
+        for member in parts:
+            peer = self.peer_map[member]
+            try:
+                self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+                lsnp_logger.info(f"[GROUP_REMOVE] Removed member {peer.ip}:{peer.port}")
+            except Exception as e:
+                lsnp_logger.error("[GROUP_REMOVE] FAILED: To remove {peer.ip} - {e}")
+
+        for member in self.groups[group_index].members:
+            peer = self.peer_map[member]
+            try:
+                self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+            except Exception as e:
+                lsnp_logger.error("[GROUP_REMOVE] FAILED: To address {peer.ip} - {e}")
+
+        lsnp_logger.info(f"GROUP REMOVE: Group \"{self.groups[group_index].group_name}\" successfully removed {len(parts)} member(s).")
+    
+        if self.verbose:
+            lsnp_logger.info(f"[GROUP_REMOVE] Group now contains {len(self.groups[group_index].members) + 1} members.")
+
+    def group_message(self, group_index: int, content: str):
+        for recipient_id in self.groups[group_index].members:
+            if recipient_id not in self.peer_map:
+                lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
+                return
+
+        if self.groups[group_index].owner_id not in self.peer_map:
+            lsnp_logger.error(f"[ERROR] Unknown peer: {self.groups[group_index].owner_id}")
+            return
+            
+        message_id = str(uuid.uuid4())
+        token = generate_token(self.full_user_id, "group")
+
+        msg = make_group_message(
+            from_user_id = self.full_user_id,
+            group_id = self.groups[group_index].group_id,
+            content = content,
+            message_id = message_id,
+            token = token
+        )
+
+        ack_event = threading.Event()
+        self.ack_events[message_id] = ack_event
+
+        for member in self.groups[group_index].members:
+            peer = self.peer_map[member]
+            try:
+                for attempt in range(RETRY_COUNT):
+                    self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+                    if self.verbose:
+                        lsnp_logger.info(f"[GROUP MESSAGE SEND] Attempt {attempt + 1} to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
+                    
+                    if ack_event.wait(RETRY_INTERVAL):
+                        lsnp_logger.info(f"[GROUP MESSAGE SENT] to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
+                        break
+                    
+                    if self.verbose:
+                        lsnp_logger.info(f"[RETRY] {attempt + 1} to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
+            except Exception as e:
+                lsnp_logger.error(f"[FAILED] Group Message to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
+                del self.ack_events[message_id] 
+
+        peer = self.peer_map[self.groups[group_index].owner_id]
+        try:
+            for attempt in range(RETRY_COUNT):
+                self.socket.sendto(msg.encode(), (peer.ip, peer.port))
+                if self.verbose:
+                    lsnp_logger.info(f"[GROUP MESSAGE SEND] Attempt {attempt + 1} to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
+                
+                if ack_event.wait(RETRY_INTERVAL):
+                    lsnp_logger.info(f"[GROUP MESSAGE SENT] to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
+                    break
+                
+                if self.verbose:
+                    lsnp_logger.info(f"[RETRY] {attempt + 1} to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
+        except Exception as e:
+                lsnp_logger.error(f"[FAILED] Group Message to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
+                del self.ack_events[message_id] 
+        
+        del self.ack_events[message_id]
 
     def show_inbox(self):
         if not self.inbox:
@@ -1463,6 +1838,57 @@ class LSNPController:
                 self.list_active_transfers()
             elif cmd == "broadcast":
                 self.broadcast_profile()
+            elif cmd.startswith("group "):
+                    # Select "group" command
+                    # Select between "help", "create", "add", "remove", "message"
+                    if cmd == "group help":
+                        group_help_str = ("\nCommands:\n"
+                              "  group list <name>              - Show details of a group\n"
+                              "  group create <name> <users>    - Creates a group with one or more users\n"
+                              "  group add <name> <user>        - Adds a user to the group\n"
+                              "  group remove <name> <user>     - Removes a user from the group\n"
+                              "  group message <name> <message> - Sends a message to the group\n"
+                              "  Note: Group names and messages must be enclosed in quotation marks.\n"
+                              "  Note: Users must be separated by comma.")
+                        lsnp_logger.info(group_help_str)
+                        continue
+                    parts = shlex.split(cmd)
+                    group_index = -1
+                    for index, group in enumerate(self.groups):
+                        if group.group_name == parts[2]:
+                            group_index = index
+                            break
+                    if group_index == -1 and parts[1] != "create":
+                        lsnp_logger.info(f"No group exists.")
+                        continue
+                    if parts[1] == "list":
+                        lsnp_logger.info(f"Group Name: {self.groups[group_index].group_name}")
+                        lsnp_logger.info(f"Group Owner: {self.groups[group_index].owner_id}")
+                        lsnp_logger.info(f"Group Members:")
+                        for member in self.groups[group_index].members:
+                            lsnp_logger.info(f"{member}")
+                        continue
+                    if len(parts) != 4:
+                        lsnp_logger.info("Usage: group <cmd> <name> <args>")
+                        continue
+                    _, grp_cmd, grp_name, args = parts
+                    if grp_cmd == "create":
+                        self.group_create(grp_name, args)
+                    elif grp_cmd == "add":
+                        if self.groups[group_index].owner_id != self.full_user_id:
+                            lsnp_logger.info("No permission to manage group.")
+                        else:
+                            self.group_add(group_index, args)
+                    elif grp_cmd == "remove":
+                        if self.groups[group_index].owner_id != self.full_user_id:
+                            lsnp_logger.info("No permission to manage group.")
+                        else:
+                            self.group_remove(group_index, args)
+                    elif grp_cmd == "message":
+                        self.group_message(group_index, args)
+                    else:
+                        lsnp_logger.info("Usage: group <cmd> <args>")
+                        continue
             elif cmd == "tictactoe":
                 lsnp_logger.info("Usage: tictactoe invite <user> <X|O>, "
                                  "tictactoe move <gameid> <position 0-8>, "
