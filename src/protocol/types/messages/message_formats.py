@@ -5,7 +5,7 @@ import base64
 import mimetypes
 from src.utils import *
 
-def make_profile_message(name: str, user_id: str, avatar_path: str = None):
+def make_profile_message(name: str, user_id: str, avatar_path: str|None = None):
     message = {
         "TYPE": "PROFILE",
         "USER_ID": user_id,

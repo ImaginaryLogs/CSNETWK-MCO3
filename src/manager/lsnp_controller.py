@@ -42,6 +42,7 @@ class FileTransfer:
         self.accepted = False
         self.completed = False
         self.timestamp = int(time.time())
+        
 
     def add_chunk(self, chunk_index: int, data: bytes) -> bool:
         if not self.accepted:
@@ -69,7 +70,7 @@ class FileTransfer:
         return assembled
 
 class LSNPController:
-    def __init__(self, user_id: str, display_name: str, port: int = LSNP_PORT, verbose: bool = True):
+    def __init__(self, user_id: str, display_name: str, port: int = LSNP_PORT, verbose: bool = True, avatar_path: str|None=""):
         self.user_id = user_id
         self.display_name = display_name
         self.port = port
@@ -93,7 +94,8 @@ class LSNPController:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1) # Enables broadcasting
         self.socket.bind(("", self.port))
-
+        self.following = set()      # Who we are following
+        self.post_likes = set()
         self.zeroconf = Zeroconf()
         self._register_mdns()
         self._start_threads()
@@ -152,7 +154,6 @@ class LSNPController:
       threading.Thread(target=self._listen, daemon=True).start()
       listener = PeerListener(self.peer_map, self._on_peer_discovered)
       ServiceBrowser(self.zeroconf, MDNS_SERVICE_TYPE, listener)
-      threading.Thread(target=self._periodic_tasks, daemon=True).start()
       if self.verbose:
         lsnp_logger_v.info("[mDNS] Discovery started")
 
@@ -811,22 +812,6 @@ class LSNPController:
         lsnp_logger.error(f"[FAILED] DM to {peer.display_name} at {peer.ip}")
         del self.ack_events[message_id]
       
-    def broadcast_profile(self):	
-        msg = make_profile_message(self.display_name, self.user_id, self.ip)
-        broadcast_count = 0
-    
-        for peer in self.peer_map.values():
-            try:
-                self.socket.sendto(msg.encode(), (peer.ip, peer.port))
-                broadcast_count += 1
-                lsnp_logger.info(f"[BROADCAST] Sent to {peer.ip}:{peer.port}")
-            except Exception as e:
-                lsnp_logger.error("[BROADCAST] FAILED: To {peer.ip} - {e}")
-                
-        lsnp_logger.info(f"PROFILE BROADCAST: Sent to {broadcast_count} peers")
-    
-        if self.verbose:
-            lsnp_logger_v.info("[BROADCAST] Profile message sent.")
 
     def _periodic_profile_broadcast(self):
         while True:
