@@ -62,6 +62,16 @@ def make_follow_message(from_id: str, to_id: str, message_id: str, token: str):
         "TOKEN": token
     })
 
+def make_group_create_message(from_user_id: str, group_id: str, group_name: str, members: list[str], token: str):
+    return format_kv_message({
+        "TYPE": "GROUP_CREATE",
+        "FROM": from_user_id,
+        "GROUP_ID": group_id,
+        "GROUP_NAME": group_name,
+        "MEMBERS": ",".join(members),
+        "TIMESTAMP": int(time.time()),
+        "TOKEN": token
+    })
 
 def make_group_add_message(from_user_id: str, group_id: str, group_name: str, add: str, members: str, token: str):
     return format_kv_message({

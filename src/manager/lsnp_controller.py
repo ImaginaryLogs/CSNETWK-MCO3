@@ -442,7 +442,7 @@ class LSNPController:
             
             if not validate_token(token, "group"):
                 if self.verbose:
-                    lsnp_logger_v.info(f"[GROUP_CREATE REJECTED] Invalid token from {from_id}")
+                    lsnp_logger.info(f"[GROUP_CREATE REJECTED] Invalid token from {from_id}")
                 return
             
             group = Group(group_id, group_name, from_id, parts)
@@ -450,8 +450,8 @@ class LSNPController:
 
             lsnp_logger.info(f"[GROUP_CREATE] You've been added to \"{group_name}\"")
             if self.verbose:
-                lsnp_logger_v.info(f"[GROUP_CREATE] Owner: {from_id}")
-                lsnp_logger_v.info(f"[GROUP_CREATE] Members: {members}")
+                lsnp_logger.info(f"[GROUP_CREATE] Owner: {from_id}")
+                lsnp_logger.info(f"[GROUP_CREATE] Members: {members}")
 
         elif msg_type == "GROUP_ADD":
             from_id: str = kv.get("FROM", "")
@@ -469,7 +469,7 @@ class LSNPController:
                             
             if not validate_token(token, "group"):
                 if self.verbose:
-                    lsnp_logger_v.info(f"[GROUP_ADD REJECTED] Invalid token from {from_id}")
+                    lsnp_logger.info(f"[GROUP_ADD REJECTED] Invalid token from {from_id}")
                 return
 
             if self.full_user_id in add_parts:
@@ -485,8 +485,8 @@ class LSNPController:
                 self.groups[group_index].members = member_parts
                 lsnp_logger.info(f"[GROUP_ADD] The group \"{self.groups[group_index].group_name}\" member list was updated.")
             if self.verbose:
-                lsnp_logger_v.info(f"[GROUP_ADD] Owner: {from_id}")
-                lsnp_logger_v.info(f"[GROUP_ADD] Members: {members}")
+                lsnp_logger.info(f"[GROUP_ADD] Owner: {from_id}")
+                lsnp_logger.info(f"[GROUP_ADD] Members: {members}")
 
         elif msg_type == "GROUP_REMOVE":
             from_id: str = kv.get("FROM", "")
@@ -510,7 +510,7 @@ class LSNPController:
             
             if not validate_token(token, "group"):
                 if self.verbose:
-                    lsnp_logger_v.info(f"[GROUP_REMOVE REJECTED] Invalid token from {from_id}")
+                    lsnp_logger.info(f"[GROUP_REMOVE REJECTED] Invalid token from {from_id}")
                 return
             
             if self.full_user_id in remove_parts:
@@ -526,8 +526,8 @@ class LSNPController:
                 for member in self.groups[group_index].members:
                     members_str = members_str + ","
                 members_str = members_str[:-1]
-                lsnp_logger_v.info(f"[GROUP_REMOVE] Owner: {from_id}")
-                lsnp_logger_v.info(f"[GROUP_REMOVE] Members: {members}")
+                lsnp_logger.info(f"[GROUP_REMOVE] Owner: {from_id}")
+                lsnp_logger.info(f"[GROUP_REMOVE] Members: {members}")
 
         elif msg_type == "GROUP_MESSAGE":
             from_id = kv.get("FROM", "")
@@ -547,7 +547,7 @@ class LSNPController:
             
             if not validate_token(token, "group"):
                 if self.verbose:
-                    lsnp_logger_v.info(f"[GROUP MESSAGE REJECTED] Invalid token from {from_id}")
+                    lsnp_logger.info(f"[GROUP MESSAGE REJECTED] Invalid token from {from_id}")
                 return
             
             lsnp_logger.info(f"[\"{self.groups[group_index].group_name}\"] {from_id}: {content}")
@@ -1033,23 +1033,6 @@ class LSNPController:
         if recipient_id not in self.peer_map:
             lsnp_logger.error(f"[ERROR] Unknown peer: {recipient_id}")
             return
-    	
-    def broadcast_profile(self):	
-        msg = make_profile_message(self.display_name, self.user_id, self.ip)
-        broadcast_count = 0
-    
-        for peer in self.peer_map.values():
-            try:
-                self.socket.sendto(msg.encode(), (peer.ip, peer.port))
-                broadcast_count += 1
-                lsnp_logger.info(f"[BROADCAST] Sent to {peer.ip}:{peer.port}")
-            except Exception as e:
-                lsnp_logger.error("[BROADCAST] FAILED: To {peer.ip} - {e}")
-                
-        lsnp_logger.info(f"PROFILE BROADCAST: Sent to {broadcast_count} peers")
-    
-        if self.verbose:
-            lsnp_logger_v.info("[BROADCAST] Profile message sent.")
 
     def _periodic_profile_broadcast(self):
         while True:
@@ -1109,16 +1092,11 @@ class LSNPController:
         token = generate_token(self.full_user_id, "group")
         self.groups.append(group)
 
-        members_str = ""
-        for memeber in parts:
-            members_str = members_str + memeber + ","
-        members_str = members_str[:-1]
-
         msg = make_group_create_message(
             from_user_id = self.full_user_id,
             group_id = group.group_id, 
             group_name = group.group_name, 
-            members = members_str, 
+            members = parts, 
             token = token
         )
 
@@ -1133,7 +1111,7 @@ class LSNPController:
         lsnp_logger.info(f"GROUP CREATE: Group \"{group.group_name}\" successfully created.")
     
         if self.verbose:
-            lsnp_logger_v.info(f"[GROUP_CREATE] Group created with {len(group.members) + 1} members.")
+            lsnp_logger.info(f"[GROUP_CREATE] Group created with {len(group.members) + 1} members.")
 
     def group_add(self, group_index: int, members: str):
         parts = members.split(",")
@@ -1189,7 +1167,7 @@ class LSNPController:
         lsnp_logger.info(f"GROUP ADD: Group \"{self.groups[group_index].group_name}\" successfully added {len(parts)} member(s).")
     
         if self.verbose:
-            lsnp_logger_v.info(f"[GROUP_ADD] Group now contains {len(self.groups[group_index].members) + 1} members.")
+            lsnp_logger.info(f"[GROUP_ADD] Group now contains {len(self.groups[group_index].members) + 1} members.")
 
     def group_remove(self, group_index: int, members: str):
         parts = members.split(",")
@@ -1245,7 +1223,7 @@ class LSNPController:
         lsnp_logger.info(f"GROUP REMOVE: Group \"{self.groups[group_index].group_name}\" successfully removed {len(parts)} member(s).")
     
         if self.verbose:
-            lsnp_logger_v.info(f"[GROUP_REMOVE] Group now contains {len(self.groups[group_index].members) + 1} members.")
+            lsnp_logger.info(f"[GROUP_REMOVE] Group now contains {len(self.groups[group_index].members) + 1} members.")
 
     def group_message(self, group_index: int, content: str):
         for recipient_id in self.groups[group_index].members:
@@ -1277,14 +1255,14 @@ class LSNPController:
                 for attempt in range(RETRY_COUNT):
                     self.socket.sendto(msg.encode(), (peer.ip, peer.port))
                     if self.verbose:
-                        lsnp_logger_v.info(f"[GROUP MESSAGE SEND] Attempt {attempt + 1} to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
+                        lsnp_logger.info(f"[GROUP MESSAGE SEND] Attempt {attempt + 1} to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
                     
                     if ack_event.wait(RETRY_INTERVAL):
                         lsnp_logger.info(f"[GROUP MESSAGE SENT] to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
                         break
                     
                     if self.verbose:
-                        lsnp_logger_v.info(f"[RETRY] {attempt + 1} to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
+                        lsnp_logger.info(f"[RETRY] {attempt + 1} to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
             except Exception as e:
                 lsnp_logger.error(f"[FAILED] Group Message to \"{self.groups[group_index].group_name}\" for {member} at {peer.ip}")
                 del self.ack_events[message_id] 
@@ -1294,14 +1272,14 @@ class LSNPController:
             for attempt in range(RETRY_COUNT):
                 self.socket.sendto(msg.encode(), (peer.ip, peer.port))
                 if self.verbose:
-                    lsnp_logger_v.info(f"[GROUP MESSAGE SEND] Attempt {attempt + 1} to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
+                    lsnp_logger.info(f"[GROUP MESSAGE SEND] Attempt {attempt + 1} to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
                 
                 if ack_event.wait(RETRY_INTERVAL):
                     lsnp_logger.info(f"[GROUP MESSAGE SENT] to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
                     break
                 
                 if self.verbose:
-                    lsnp_logger_v.info(f"[RETRY] {attempt + 1} to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
+                    lsnp_logger.info(f"[RETRY] {attempt + 1} to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
         except Exception as e:
                 lsnp_logger.error(f"[FAILED] Group Message to \"{self.groups[group_index].group_name}\" for {self.groups[group_index].owner_id} at {peer.ip}")
                 del self.ack_events[message_id] 
