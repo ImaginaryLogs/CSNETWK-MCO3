@@ -1,4 +1,4 @@
 known_peers = {}     
 posts = {}           
 dms = {}
-TTL = 3600
+ttl = 3600

@@ -1046,12 +1046,12 @@ class LSNPController:
           message_id = str(uuid.uuid4())
           token = generate_token(self.full_user_id, "post")
           expiry = int(token.split("|")[1])  # timestamp + ttl
-          timestamp = expiry - state.TTL
+          timestamp = expiry - state.ttl
 
           msg = make_post_message(
               from_id=self.full_user_id,
               content=content,
-              ttl=state.TTL,
+              ttl=state.ttl,
               message_id=message_id,
               token=token
           )
@@ -1092,7 +1092,7 @@ class LSNPController:
               msg = make_post_message(
                   from_id=self.full_user_id,
                   content=content,
-                  ttl=state.TTL,
+                  ttl=state.ttl,
                   message_id=message_id,
                   token=generate_token(self.full_user_id, "post")  # regenerate token
               )
@@ -1227,8 +1227,8 @@ class LSNPController:
               if len(parts) < 2 or not parts[1].isdigit():
                   lsnp_logger.info("Usage: ttl <seconds>")
                   continue
-              state.TTL = int(parts[1])
-              lsnp_logger.info(f"[TTL] TTL updated to {state.TTL} seconds")
+              state.ttl = int(parts[1])
+              lsnp_logger.info(f"[TTL] TTL updated to {state.ttl} seconds")
             elif cmd.startswith("follow "):
               parts = cmd.split(" ", 2)
               if len(parts) < 2:
