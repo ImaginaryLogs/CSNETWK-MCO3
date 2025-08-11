@@ -1791,7 +1791,7 @@ class LSNPController:
       if not game:
           return
       peer_id = game["opponent"]
-      result = "DRAW" if winner == "DRAW" else ("LOSS" if winner == game["my_symbol"] else "WIN")
+      result = "DRAW" if winner == "DRAW" else ( "LOSS" if winner == "LOSS" else ("WIN" if winner == game["my_symbol"] else "LOSS"))
 
       message_id = str(uuid.uuid4())[:8]
       timestamp = int(time.time())
