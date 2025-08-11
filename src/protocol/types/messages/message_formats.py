@@ -62,12 +62,15 @@ def make_follow_message(from_id: str, to_id: str, message_id: str, token: str):
         "TOKEN": token
     })
 
-def make_unfollow_message(from_id: str, to_id: str, message_id: str, token: str):
+
+def make_group_add_message(from_user_id: str, group_id: str, group_name: str, add: str, members: str, token: str):
     return format_kv_message({
-        "TYPE": "UNFOLLOW",
-        "MESSAGE_ID": message_id,
-        "FROM": from_id,
-        "TO": to_id,
+        "TYPE": "GROUP_ADD",
+        "FROM": from_user_id,
+        "GROUP_ID": group_id,
+        "GROUP_NAME": group_name,
+        "ADD": add,
+        "MEMBERS": members,
         "TIMESTAMP": int(time.time()),
         "TOKEN": token
     })
@@ -91,5 +94,25 @@ def make_like_message(from_id: str, to_id: str, post_timestamp_id: str, action: 
         "POST_TIMESTAMP": post_timestamp_id,
         "ACTION": action,
         "TIMESTAMP": timestamp,
+        "TOKEN": token
+    })
+def make_group_remove_message(from_user_id: str, group_id: str, remove: str, token: str):
+    return format_kv_message({
+        "TYPE": "GROUP_REMOVE",
+        "FROM": from_user_id,
+        "GROUP_ID": group_id,
+        "REMOVE": remove,
+        "TIMESTAMP": int(time.time()),
+        "TOKEN": token
+    })
+
+def make_group_message(from_user_id: str, group_id: str, message_id: str, content: str, token: str):
+    return format_kv_message({
+        "TYPE": "GROUP_MESSAGE",
+        "FROM": from_user_id,
+        "GROUP_ID": group_id,
+        "MESSAGE_ID": message_id,
+        "CONTENT": content,
+        "TIMESTAMP": int(time.time()),
         "TOKEN": token
     })
