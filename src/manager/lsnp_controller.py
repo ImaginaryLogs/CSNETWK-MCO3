@@ -915,21 +915,21 @@ class LSNPController:
                         lsnp_logger.info("Usage: follow <user_id>")
                         continue
                     _, user_id = parts
-                    self.follow(user_id)
+                    # self.fol4low(user_id)
                 elif cmd.startswith("unfollow "):
                     parts = cmd.split(" ", 2)
                     if len(parts) < 2:
                         lsnp_logger.info("Usage: unfollow <user_id>")
                         continue
                     _, user_id = parts
-                    self.unfollow(user_id)
+                    # self.unfollow(user_id)
                 elif cmd.startswith("post "):
                     parts = cmd.split(" ", 2)
                     if len(parts) < 2:
                         lsnp_logger.info("Usage: post <message>")
                         continue
                     _, message = parts
-                    self.send_post(message)
+                    # self.send_post(message)
                 elif cmd.startswith("sendfile "):
                     parts = cmd.split(" ", 3)
                     if len(parts) < 3:
