@@ -6,7 +6,7 @@ import uuid
 import base64
 import os
 import math
-from typing import Dict, List, Callable, Tuple, Optional
+from typing import Dict, List, Callable, Tuple, Optional, Set
 from zeroconf import Zeroconf, ServiceInfo, ServiceBrowser, ServiceListener
 from src.ui import logging
 from src.config import *
@@ -94,8 +94,8 @@ class LSNPController:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1) # Enables broadcasting
         self.socket.bind(("", self.port))
-        self.following = set()      # Who we are following
-        self.post_likes = set()
+        self.following: Set[str] = set()      # Who we are following
+        self.post_likes: Set[str] = set()
         self.zeroconf = Zeroconf()
         self._register_mdns()
         self._start_threads()
@@ -264,6 +264,7 @@ class LSNPController:
                 lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) is now following you.")
                 self.inbox.append(f"User {display_name} started following you.")
                 self._send_ack(message_id, addr)
+                self.followers.append(from_id)
 
         elif msg_type == "UNFOLLOW":
             from_id = kv.get("FROM", "")
@@ -272,6 +273,7 @@ class LSNPController:
             lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) has unfollowed you.")
             self.inbox.append(f"User {display_name} unfollowed you.")
             self._send_ack(message_id, addr)
+            self.followers.remove(from_id)
         
         elif msg_type == "POST":
             from_id = kv.get("FROM", "")
@@ -929,6 +931,7 @@ class LSNPController:
             if ack_event.wait(RETRY_INTERVAL):
                 lsnp_logger.info(f"[FOLLOW SENT] to {peer.display_name} at {peer.ip}")
                 del self.ack_events[message_id]
+                self.following.add(user_id)
                 return
 
             if self.verbose:
@@ -985,6 +988,7 @@ class LSNPController:
           if ack_event.wait(RETRY_INTERVAL):
               lsnp_logger.info(f"[UNFOLLOW SENT] to {peer.display_name} at {peer.ip}")
               del self.ack_events[message_id]
+              self.following.remove(user_id)
               return
 
           if self.verbose:
@@ -1032,6 +1036,10 @@ class LSNPController:
           lsnp_logger_v.info("[BROADCAST] Profile message sent.")
 
     def send_post(self, content: str):
+      
+      if self.verbose:
+        lsnp_logger.info(f"[POST] Sending post to {len(self.followers)} followers")
+        
       if not self.followers:
           lsnp_logger.warning("[POST] No followers to send the post to.")
           return
@@ -1040,7 +1048,10 @@ class LSNPController:
       ack_events = {}   # Map message_id → Event
 
       # 1. Send to all followers first
+      
       for follower_id in self.followers:
+          if self.verbose:
+              lsnp_logger.info(f"[POST] Sending post to {follower_id}")
           if follower_id == self.full_user_id:
               if self.verbose:
                   lsnp_logger_v.info("[POST] Skipping self")

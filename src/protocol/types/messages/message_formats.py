@@ -79,6 +79,7 @@ def make_post_message(from_id: str, content: str, ttl: int, message_id: str, tok
         "CONTENT": content,
         "TTL": ttl,  
         "MESSAGE_ID": message_id,
+        "TIMESTAMP": int(time.time()),
         "TOKEN": token
     })
     
