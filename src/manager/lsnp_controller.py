@@ -10,6 +10,7 @@ from src.config import *
 from src.protocol import *
 from src.utils import *
 from src.network import *
+
 import src.manager.state as state
 
 logger = logging.Logger()
@@ -36,9 +37,6 @@ class LSNPController:
 		self.followers: set[str] = set()
 		self.post_likes: set[str] = set()
 		self.ack_events: Dict[str, threading.Event] = {}
-		# self.follow = lambda user_id: post_controller.follow(self, user_id)
-		# self.unfollow = lambda user_id: post_controller.unfollow(self, user_id)
-		# self.send_post = lambda content: post_controller.send_post(self, content)
 
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1) # Enables broadcasting
@@ -250,7 +248,7 @@ class LSNPController:
 			try:
 					parts = token.split("|")
 					expiry = int(parts[1])  # expiry time = timestamp + ttl
-					timestamp = expiry - state.ttl
+					timestamp = expiry - state.TTL
 			except Exception:
 					timestamp = "unknown"
 
@@ -527,8 +525,6 @@ class LSNPController:
 		lsnp_logger.error(f"[FOLLOW FAILED] Could not send to {peer.display_name} at {peer.ip}")
 		del self.ack_events[message_id]
 
-
-
 	def unfollow(self, user_id: str):
 		if "@" not in user_id:
 				full_user_id = None
@@ -607,12 +603,12 @@ class LSNPController:
 				message_id = str(uuid.uuid4())
 				token = generate_token(self.full_user_id, "post")
 				expiry = int(token.split("|")[1])  # timestamp + ttl
-				timestamp = expiry - state.ttl
+				timestamp = expiry - state.TTL
 
 				msg = make_post_message(
 						from_id=self.full_user_id,
 						content=content,
-						ttl=state.ttl,
+						ttl=state.TTL,
 						message_id=message_id,
 						token=token
 				)
@@ -653,7 +649,7 @@ class LSNPController:
 						msg = make_post_message(
 								from_id=self.full_user_id,
 								content=content,
-								ttl=state.ttl,
+								ttl=state.TTL,
 								message_id=message_id,
 								token=generate_token(self.full_user_id, "post")  # regenerate token
 						)
