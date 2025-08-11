@@ -389,6 +389,7 @@ class LSNPController:
                 "turn": 0,
                 "active": True
             }
+            self.gamemanager._print_ttt_board(self.tictactoe_games[gameid]["board"])
 
         elif msg_type == "TICTACTOE_MOVE":
             gameid = str(kv.get("GAMEID"))
@@ -1361,22 +1362,27 @@ class LSNPController:
             cmd = lsnp_logger.input("", end="").strip()
             if cmd == "help":
               help_str = ("\nCommands:\n"
-                                  "  peers              - List discovered peers\n"
-                                  "  dms                - Show inbox\n"
-                                  "  dm <user> <msg>    - Send direct message\n"
-                                  "  post <msg>         - Create a new post to followers\n"
-                                  "  follow <user>      - Follow a user\n"
-                                  "  unfollow <user>    - Unfollow a user\n"
-                                  "  sendfile <user> <filepath> [description] - Send a file\n"
-                                  "  acceptfile <fileid> - Accept a pending file offer\n"
-                                  "  rejectfile <fileid> - Reject a pending file offer\n"
-                                  "  pendingfiles       - List pending file offers\n"
-                                  "  transfers          - List active file transfers\n"
-                                  "  broadcast          - Send profile broadcast\n"
-                                  "  ping               - Send ping\n"
-                                  "  verbose            - Toggle verbose mode\n"
-                                  "  ipstats            - Show IP statistics\n"
-                                  "  quit               - Exit")
+                "  peers                                      - List discovered peers\n"
+                "  dms                                        - Show inbox\n"
+                "  dm <user> <msg>                            - Send direct message\n"
+                "  post <msg>                                 - Create a new post to followers\n"
+                "  follow <user>                              - Follow a user\n"
+                "  unfollow <user>                            - Unfollow a user\n"
+                "  sendfile <user> <filepath> [description]   - Send a file\n"
+                "  acceptfile <fileid>                        - Accept a pending file offer\n"
+                "  rejectfile <fileid>                        - Reject a pending file offer\n"
+                "  pendingfiles                               - List pending file offers\n"
+                "  transfers                                  - List active file transfers\n"
+                "  broadcast                                  - Send profile broadcast\n"
+                "  ttl <seconds>                              - Set TTL for posts (default: 60)\n"
+                "  tictactoe list                             - List active Tic Tac Toe games\n"
+                "  tictactoe invite <user> <X|O>              - Invite to Tic Tac Toe game\n"
+                "  tictactoe move <gameid> <position 0-8>     - Make a move in Tic Tac Toe\n"
+                "  tictactoe forfeit <gameid>                 - Forfeit a Tic Tac Toe game\n"
+                "  ping                                       - Send ping\n"
+                "  verbose                                    - Toggle verbose mode\n"
+                "  ipstats                                    - Show IP statistics\n"
+                "  quit                                       - Exit")
               lsnp_logger.info(help_str)
               lsnp_logger.info(help_str)
             elif cmd == "peers":
@@ -1454,6 +1460,18 @@ class LSNPController:
                 self.list_active_transfers()
             elif cmd == "broadcast":
                 self.broadcast_profile()
+            elif cmd == "tictactoe":
+                lsnp_logger.info("Usage: tictactoe invite <user> <X|O>, "
+                                 "tictactoe move <gameid> <position 0-8>, "
+                                 "tictactoe forfeit <gameid>")
+            elif cmd == "tictactoe list":
+                if not self.tictactoe_games:
+                    lsnp_logger.info("No active Tic Tac Toe games.")
+                else:
+                    lsnp_logger.info("Active Tic Tac Toe games:")
+                    for gameid, game in self.tictactoe_games.items():
+                        lsnp_logger.info(f"- Game ID: {gameid}, Opponent: {game['opponent']}, "
+                                         f"Symbol: {game['my_symbol']}, Turn: {game['turn']}")
             elif cmd.startswith("tictactoe invite "):
                 parts = cmd.split(" ")
                 if len(parts) != 4:
@@ -1461,7 +1479,7 @@ class LSNPController:
                 else:
                     _, _, user, symbol = parts
                     self.send_tictactoe_invite(user, symbol)
-
+                
             elif cmd.startswith("tictactoe move "):
                 parts = cmd.split(" ")
                 if len(parts) != 4:
