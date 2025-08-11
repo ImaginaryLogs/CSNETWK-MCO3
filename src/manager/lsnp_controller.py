@@ -1791,7 +1791,7 @@ class LSNPController:
       if not game:
           return
       peer_id = game["opponent"]
-      result = "DRAW" if winner == "DRAW" else ("WIN" if winner == game["my_symbol"] else "LOSS")
+      result = "DRAW" if winner == "DRAW" else ("LOSS" if winner == game["my_symbol"] else "WIN")
 
       message_id = str(uuid.uuid4())[:8]
       timestamp = int(time.time())
@@ -1841,10 +1841,10 @@ class LSNPController:
                 "  transfers                                    - List active file transfers\n"
                 "  broadcast                                    - Send profile broadcast\n"
                 "  ttl <seconds>                                - Set TTL for posts (default: 60)\n"
-                "  tictactoe list                               - List active Tic Tac Toe games\n"
-                "  tictactoe invite <user> <X|O>                - Invite to Tic Tac Toe game\n"
-                "  tictactoe move <gameid> <position 0-8>       - Make a move in Tic Tac Toe\n"
-                "  tictactoe forfeit <gameid>                   - Forfeit a Tic Tac Toe game\n"
+                "  game list                                    - List active Tic Tac Toe games\n"
+                "  game invite <user> <X|O>                     - Invite to Tic Tac Toe game\n"
+                "  game move <gameid> <position 0-8>            - Make a move in Tic Tac Toe\n"
+                "  game forfeit <gameid>                        - Forfeit a Tic Tac Toe game\n"
                 "  group list <name>                            - Show details of a group\n"
                 "  group create <name> <users>                  - Creates a group with one or more users\n"
                 "  group add <name> <user>                      - Adds a user to the group\n"
@@ -1987,11 +1987,11 @@ class LSNPController:
                     else:
                         self.lsnp_logger.info("Usage: group <cmd> <args>")
                         continue
-            elif cmd == "tictactoe":
-                self.lsnp_logger.info("Usage: tictactoe invite <user> <X|O>, "
-                                 "tictactoe move <gameid> <position 0-8>, "
-                                 "tictactoe forfeit <gameid>")
-            elif cmd == "tictactoe list":
+            elif cmd == "game":
+                self.lsnp_logger.info("Usage: game invite <user> <X|O>, "
+                                 "game move <gameid> <position 0-8>, "
+                                 "game forfeit <gameid>")
+            elif cmd == "game list":
                 if not self.tictactoe_games:
                     self.lsnp_logger.info("No active Tic Tac Toe games.")
                 else:
@@ -1999,26 +1999,26 @@ class LSNPController:
                     for gameid, game in self.tictactoe_games.items():
                         self.lsnp_logger.info(f"- Game ID: {gameid}, Opponent: {game['opponent']}, "
                                          f"Symbol: {game['my_symbol']}, Turn: {game['turn']}")
-            elif cmd.startswith("tictactoe invite "):
+            elif cmd.startswith("game invite "):
                 parts = cmd.split(" ")
                 if len(parts) != 4:
-                    self.lsnp_logger.info("Usage: tictactoe invite <user> <X|O>")
+                    self.lsnp_logger.info("Usage: game invite <user> <X|O>")
                 else:
                     _, _, user, symbol = parts
                     self.send_tictactoe_invite(user, symbol)
                 
-            elif cmd.startswith("tictactoe move "):
+            elif cmd.startswith("game move "):
                 parts = cmd.split(" ")
                 if len(parts) != 4:
-                    self.lsnp_logger.info("Usage: tictactoe move <gameid> <position 0-8>")
+                    self.lsnp_logger.info("Usage: game move <gameid> <position 0-8>")
                 else:
                     _, _, gameid, pos = parts
                     self.send_tictactoe_move(gameid, int(pos))
 
-            elif cmd.startswith("tictactoe forfeit "):
+            elif cmd.startswith("game forfeit "):
                 parts = cmd.split(" ")
                 if len(parts) != 3:
-                    self.lsnp_logger.info("Usage: tictactoe forfeit <gameid>")
+                    self.lsnp_logger.info("Usage: game forfeit <gameid>")
                 else:
                     _, _, gameid = parts
                     self.forfeit_tictactoe(gameid)
