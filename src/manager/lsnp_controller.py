@@ -266,10 +266,10 @@ class LSNPController:
                 self._send_ack(message_id, addr)
 
         elif msg_type == "UNFOLLOW":
-            from_id = kv.get("FROM", "")
+            from_id = kv.get("USER_ID", "")
+            display_name = kv.get("DISPLAY_NAME", "")
             message_id = kv.get("MESSAGE_ID", "")
-            display_name = from_id.split('@')[0]
-            lsnp_logger.info(f"[NOTIFY] {display_name} has unfollowed you.")
+            lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) has unfollowed you.")
             self.inbox.append(f"User {display_name} unfollowed you.")
             self._send_ack(message_id, addr)
         
@@ -1189,6 +1189,7 @@ class LSNPController:
                                   "  peers              - List discovered peers\n"
                                   "  dms                - Show inbox\n"
                                   "  dm <user> <msg>    - Send direct message\n"
+                                  "  post <msg>         - Create a new post to followers\n"
                                   "  follow <user>      - Follow a user\n"
                                   "  unfollow <user>    - Unfollow a user\n"
                                   "  sendfile <user> <filepath> [description] - Send a file\n"
