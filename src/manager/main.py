@@ -18,7 +18,7 @@ def main():
   server_logger.info("Hello World!")
   parser = argparse.ArgumentParser()
   parser.add_argument("user_id", help="Your username (without @ip)")
-  parser.add_argument("-n", "--name", default="Anonymous", help="Display name")
+  parser.add_argument("-n", "--name", default=None, help="Display name")
   parser.add_argument("-p", "--port", type=int, default=LSNP_PORT, help="UDP port")
   parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose mode")
   parser.add_argument("--avatar", help="Path to your profile picture")
@@ -36,7 +36,10 @@ def main():
         server_logger.error(f"Avatar file not found: {avatar_path}")
         return
   else:
-    avatar_path = None  
+    avatar_path = None
+  # If name is not provided, use user_id
+  if args.name is None:
+      args.name = args.user_id
   server_logger.info("Starting LSNP Controller...")
   peer = LSNPController(args.user_id, args.name, args.port, args.verbose, avatar_path=avatar_path)
   peer.run()
