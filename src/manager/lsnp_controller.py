@@ -1857,7 +1857,6 @@ class LSNPController:
                 "  ipstats                                      - Show IP statistics\n"
                 "  quit                                         - Exit")
               self.lsnp_logger.info(help_str)
-              self.lsnp_logger.info(help_str)
             elif cmd == "peers":
               self.list_peers()
             elif cmd == "dms":
