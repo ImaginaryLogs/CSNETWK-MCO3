@@ -276,7 +276,7 @@ class LSNPController:
             self.followers.remove(from_id)
         
         elif msg_type == "POST":
-            from_id = kv.get("FROM", "")
+            from_id = kv.get("USER_ID", "")
             token = kv.get("TOKEN", "")
             message_id = kv.get("MESSAGE_ID", "")
             if not validate_token(token, "post"):
@@ -290,7 +290,7 @@ class LSNPController:
                             display_name = peer.display_name
                             break
             if not display_name:
-                    display_name = from_id.split('@')[0]
+              display_name = from_id.split('@')[0]
             lsnp_logger.info(f"[POST] {display_name}: {content}")
             self.inbox.append(f"[{timestamp}] {display_name} (POST): {content}")
             self._send_ack(message_id, addr)
