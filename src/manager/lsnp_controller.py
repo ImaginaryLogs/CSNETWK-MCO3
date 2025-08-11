@@ -190,91 +190,93 @@ class LSNPController:
         sender_ip, sender_port = addr
 
         if msg_type == "PROFILE":
-          from_id = kv.get("USER_ID", "")
-          display_name = kv.get("DISPLAY_NAME", "")
-          avatar_data = kv.get("AVATAR_DATA")
-          avatar_type = kv.get("AVATAR_TYPE")
+            from_id = kv.get("USER_ID", "")
+            display_name = kv.get("DISPLAY_NAME", "")
+            avatar_data = kv.get("AVATAR_DATA")
+            avatar_type = kv.get("AVATAR_TYPE")
 
-          ip = addr[0]
-          port = addr[1]
+            ip = addr[0]
+            port = addr[1]
 
 
-          self.ip_tracker.log_new_ip(sender_ip, from_id, "profile_message")
-          if from_id not in self.peer_map:
-              peer = Peer(from_id, display_name, ip, port)
-              peer.avatar_data = avatar_data
-              peer.avatar_type = avatar_type
-              self.peer_map[from_id] = peer
-          else:
-              # Update existing peer
-              self.peer_map[from_id].display_name = display_name
-              self.peer_map[from_id].avatar_data = avatar_data
-              self.peer_map[from_id].avatar_type = avatar_type
+            self.ip_tracker.log_new_ip(sender_ip, from_id, "profile_message")
+            if from_id not in self.peer_map:
+                peer = Peer(from_id, display_name, ip, port)
+                peer.avatar_data = avatar_data
+                peer.avatar_type = avatar_type
+                self.peer_map[from_id] = peer
+            else:
+                # Update existing peer
+                self.peer_map[from_id].display_name = display_name
+                self.peer_map[from_id].avatar_data = avatar_data
+                self.peer_map[from_id].avatar_type = avatar_type
 
-          if self.verbose:
-            lsnp_logger_v.info(f"[PROFILE] {display_name} ({from_id}) joined from {ip}")
-        
-        
-            
-        elif msg_type == "DM":
-          from_id = kv.get("FROM", "")
-          to_id = kv.get("TO", "")
-          token = kv.get("TOKEN", "")
-
-          # Verify this message is for us
-          if self.verbose:
-            lsnp_logger.info(f"[DM] Received from ${from_id} to ${to_id}")
-          if to_id != self.full_user_id:
             if self.verbose:
-              lsnp_logger_v.info(f"[DM IGNORED] Not for us: {to_id}")
-              return
+                lsnp_logger_v.info(f"[PROFILE] {display_name} ({from_id}) joined from {ip}")
+                
+        elif msg_type == "DM":
+            from_id = kv.get("FROM", "")
+            to_id = kv.get("TO", "")
+            token = kv.get("TOKEN", "")
+
+            # Verify this message is for us
+            if self.verbose:
+                lsnp_logger.info(f"[DM] Received from ${from_id} to ${to_id}")
+            if to_id != self.full_user_id:
+                if self.verbose:
+                    lsnp_logger_v.info(f"[DM IGNORED] Not for us: {to_id}")
+                return
+                
+            if not validate_token(token, "chat"):
+                if self.verbose:
+                    lsnp_logger_v.info(f"[DM REJECTED] Invalid token from {from_id}")
+                return
+            content = kv.get("CONTENT", "")
+            message_id = kv.get("MESSAGE_ID", "")
+            timestamp = kv.get("TIMESTAMP", "")
             
-          if not validate_token(token, "chat"):
-              if self.verbose:
-                  lsnp_logger_v.info(f"[DM REJECTED] Invalid token from {from_id}")
-              return
-          
-          content = kv.get("CONTENT", "")
-          message_id = kv.get("MESSAGE_ID", "")
-          timestamp = kv.get("TIMESTAMP", "")
-          
-          # Get display name for prettier output
-          display_name = from_id.split('@')[0]  # Default to username part
-          if self.verbose:
+            # Get display name for prettier output
+            display_name = from_id.split('@')[0]  # Default to username part
+            if self.verbose:
+                lsnp_logger.info(f"{display_name}: {content}")
+            # Check if it's from ourselves
+            if from_id == self.full_user_id:
+                display_name = self.display_name
+            else:
+                # Look up in peer_map for other peers
+                for peer in self.peer_map.values():
+                    if peer.user_id == from_id:
+                        display_name = peer.display_name
+                        break
+            
             lsnp_logger.info(f"{display_name}: {content}")
-          # Check if it's from ourselves
-          if from_id == self.full_user_id:
-              display_name = self.display_name
-          else:
-              # Look up in peer_map for other peers
-              for peer in self.peer_map.values():
-                  if peer.user_id == from_id:
-                      display_name = peer.display_name
-                      break
-          
-          lsnp_logger.info(f"{display_name}: {content}")
-          self.inbox.append(f"[{timestamp}] {display_name}: {content}")
-          lsnp_logger.debug(f"Send Ack")
-          self._send_ack(message_id, addr)
+            self.inbox.append(f"[{timestamp}] {display_name}: {content}")
+            lsnp_logger.debug(f"Send Ack")
+            self._send_ack(message_id, addr)
   
         elif msg_type == "FOLLOW":
             from_id = kv.get("FROM", "")
             to_id = kv.get("TO", "")
+            message_id = kv.get("MESSAGE_ID", "")
             display_name = from_id.split('@')[0]
             
             if to_id == self.full_user_id:
-                    lsnp_logger.info(f"[NOTIFY] {display_name} is now following you.")
-                    self.inbox.append(f"User {display_name} started following you.")
+                lsnp_logger.info(f"[NOTIFY] {display_name} is now following you.")
+                self.inbox.append(f"User {display_name} started following you.")
+                self._send_ack(message_id, addr)
 
         elif msg_type == "UNFOLLOW":
-                from_id = kv.get("USER_ID", "")
-                display_name = kv.get("DISPLAY_NAME", "")
-                lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) has unfollowed you.")
-                self.inbox.append(f"User {display_name} unfollowed you.")
+            from_id = kv.get("USER_ID", "")
+            display_name = kv.get("DISPLAY_NAME", "")
+            message_id = kv.get("MESSAGE_ID", "")
+            lsnp_logger.info(f"[NOTIFY] {display_name} ({from_id}) has unfollowed you.")
+            self.inbox.append(f"User {display_name} unfollowed you.")
+            self._send_ack(message_id, addr)
         
         elif msg_type == "POST":
             from_id = kv.get("FROM", "")
             token = kv.get("TOKEN", "")
+            message_id = kv.get("MESSAGE_ID", "")
             if not validate_token(token, "post"):
                     lsnp_logger.warning(f"[POST REJECTED] Invalid token from {from_id}")
                     return
@@ -289,6 +291,7 @@ class LSNPController:
                     display_name = from_id.split('@')[0]
             lsnp_logger.info(f"[POST] {display_name}: {content}")
             self.inbox.append(f"[{timestamp}] {display_name} (POST): {content}")
+            self._send_ack(message_id, addr)
 
         # File transfer message handlers
         elif msg_type == "FILE_OFFER":
