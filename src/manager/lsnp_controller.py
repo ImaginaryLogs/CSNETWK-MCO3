@@ -83,11 +83,7 @@ class LSNPController:
       
       from src.manager import CommandManager
       self.command_manager = CommandManager(self, self.lsnp_logger)
-      
-
-      
-      
-     
+    
       
       self.revoked_tokens = set()
       
