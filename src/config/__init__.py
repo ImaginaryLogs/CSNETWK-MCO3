@@ -5,6 +5,8 @@ from .config import (
     RETRY_COUNT,
     RETRY_INTERVAL,
     TOKEN_TTL,
+    MAX_CHUNK_SIZE,
+    LSNP_BROADCAST_PERIOD_SECONDS
 )
 
 __all__ = [
@@ -14,4 +16,6 @@ __all__ = [
     "RETRY_COUNT",
     "RETRY_INTERVAL",
     "TOKEN_TTL",
+    "MAX_CHUNK_SIZE",
+    "LSNP_BROADCAST_PERIOD_SECONDS"
 ]

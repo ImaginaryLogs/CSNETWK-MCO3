@@ -9,3 +9,6 @@ RETRY_INTERVAL = 2.0    # seconds
 
 # Tokens
 TOKEN_TTL = 600         # seconds
+
+MAX_CHUNK_SIZE = 1024  # Maximum chunk size in bytes
+LSNP_BROADCAST_PERIOD_SECONDS = 300

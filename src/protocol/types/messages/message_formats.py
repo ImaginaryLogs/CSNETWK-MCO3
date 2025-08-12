@@ -4,6 +4,14 @@ import os
 import base64
 import mimetypes
 from src.utils import *
+from typing import List, Dict, MutableMapping, Optional
+class Group:
+    def __init__(self, group_id: str, group_name: str, owner_id: str, members: List[str]):
+        self.group_id: str = group_id
+        self.group_name: str = group_name
+        self.owner_id: str = owner_id
+        self.members: List[str] = members
+        self.created_at: str = str(int(time.time()))
 
 def make_profile_message(name: str, user_id: str, avatar_path: str|None = None):
     message = {
